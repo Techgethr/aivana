@@ -26,7 +26,7 @@ class ProductModel {
         `SELECT p.*, c.name as category_name
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.status = 'active'`,
+         WHERE p.status != 'archived'`,
         (err, rows) => {
           if (err) {
             reject(err);
@@ -44,7 +44,7 @@ class ProductModel {
         `SELECT p.*, c.name as category_name
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.id = ? AND p.status = 'active'`,
+         WHERE p.id = ? AND p.status != 'archived'`,
         [id],
         (err, row) => {
           if (err) {
@@ -58,13 +58,13 @@ class ProductModel {
   }
 
   static async findBySeller(sellerId) {
-    // Since there's only one seller now, return all products
+    // Since there's only one seller now, return all active products
     return new Promise((resolve, reject) => {
       db.getDb().all(
         `SELECT p.*, c.name as category_name
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.status = 'active'`,
+         WHERE p.status != 'archived'`,
         (err, rows) => {
           if (err) {
             reject(err);
@@ -98,11 +98,12 @@ class ProductModel {
   }
 
   static async delete(id) {
+    // Instead of deleting, archive the product by changing its status
     return new Promise((resolve, reject) => {
       const stmt = db.getDb().prepare(
         'UPDATE products SET status = ? WHERE id = ?'
       );
-      stmt.run(['deleted', id], function(err) {
+      stmt.run(['archived', id], function(err) {
         if (err) {
           reject(err);
         } else {

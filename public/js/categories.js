@@ -84,7 +84,6 @@ async function loadCategories() {
         <td>${new Date(category.created_at).toLocaleDateString()}</td>
         <td class="actions-cell">
           <button onclick="editCategory(${category.id})" class="btn-primary">Edit</button>
-          <button onclick="deleteCategory(${category.id})" class="btn-secondary">Delete</button>
         </td>
       `;
       tbody.appendChild(row);
@@ -114,24 +113,3 @@ async function editCategory(categoryId) {
   }
 }
 
-async function deleteCategory(categoryId) {
-  if (!confirm('Are you sure you want to delete this category? Note: You cannot delete a category that has associated products.')) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`/api/categories/${categoryId}`, {
-      method: 'DELETE'
-    });
-
-    if (response.ok) {
-      loadCategories(); // Refresh the category list
-    } else {
-      const errorData = await response.json();
-      alert(errorData.error || 'Error deleting category');
-    }
-  } catch (error) {
-    console.error('Error deleting category:', error);
-    alert('Error deleting category');
-  }
-}

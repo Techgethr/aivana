@@ -124,7 +124,6 @@ async function loadProducts() {
         <td><span class="status-badge ${product.status}">${product.status}</span></td>
         <td class="actions-cell">
           <button onclick="editProduct(${product.id})" class="btn-primary">Edit</button>
-          <button onclick="deleteProduct(${product.id})" class="btn-secondary">Delete</button>
         </td>
       `;
       tbody.appendChild(row);
@@ -161,26 +160,6 @@ async function editProduct(productId) {
   }
 }
 
-async function deleteProduct(productId) {
-  if (!confirm('Are you sure you want to delete this product?')) {
-    return;
-  }
-  
-  try {
-    const response = await fetch(`/api/products/${productId}`, {
-      method: 'DELETE'
-    });
-    
-    if (response.ok) {
-      loadProducts(); // Refresh the product list
-    } else {
-      alert('Error deleting product');
-    }
-  } catch (error) {
-    console.error('Error deleting product:', error);
-    alert('Error deleting product');
-  }
-}
 
 // Add CSS for status badge
 const style = document.createElement('style');

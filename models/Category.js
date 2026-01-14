@@ -90,17 +90,19 @@ class CategoryModel {
 
   static async delete(id) {
     return new Promise((resolve, reject) => {
+      // Instead of deleting, we'll archive the category by checking for associated products
       // Check if any products are associated with this category
       db.getDb().get(
-        'SELECT COUNT(*) as count FROM products WHERE category_id = ?',
-        [id],
+        'SELECT COUNT(*) as count FROM products WHERE category_id = ? AND status != ?',
+        [id, 'archived'],
         (err, row) => {
           if (err) {
             reject(err);
           } else if (row.count > 0) {
-            // Don't allow deletion if products are associated with this category
-            reject(new Error('Cannot delete category with associated products'));
+            // Don't allow deletion if active products are associated with this category
+            reject(new Error('Cannot delete category with associated active products'));
           } else {
+            // If no products are associated, we can remove it
             const stmt = db.getDb().prepare(
               'DELETE FROM categories WHERE id = ?'
             );

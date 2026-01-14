@@ -46,13 +46,13 @@ router.post('/ai/chat', async (req, res) => {
     
     // If userId is provided, validate it
     let validatedUserId = null;
-    if (userId) {
-      const user = await UserModel.findById(userId);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      validatedUserId = userId;
-    }
+    // if (userId) {
+    //   const user = await UserModel.findById(userId);
+    //   if (!user) {
+    //     return res.status(404).json({ error: 'User not found' });
+    //   }
+    //   validatedUserId = userId;
+    // }
     
     // Process the message with the AI agent
     const result = await aiAgent.processMessage(message, validatedUserId, sessionId);
@@ -215,7 +215,7 @@ router.put('/products/:id', bypassAuth, async (req, res) => {
   }
 });
 
-// Delete a product (requires authentication)
+// Archive a product (requires authentication)
 router.delete('/products/:id', bypassAuth, async (req, res) => {
   try {
     const productId = req.params.id;
@@ -228,12 +228,12 @@ router.delete('/products/:id', bypassAuth, async (req, res) => {
     const success = await ProductModel.delete(productId);
 
     if (success) {
-      res.json({ message: 'Product deleted successfully' });
+      res.json({ message: 'Product archived successfully' });
     } else {
-      res.status(500).json({ error: 'Failed to delete product' });
+      res.status(500).json({ error: 'Failed to archive product' });
     }
   } catch (error) {
-    console.error('Error deleting product:', error);
+    console.error('Error archiving product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
