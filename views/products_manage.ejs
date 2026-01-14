@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Products - Aivana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <div class="logo">AIVANA</div>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/dashboard" class="active">Dashboard</a></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="dashboard-container">
+    <aside class="sidebar">
+      <h3>Menu</h3>
+      <ul>
+        <li><a href="/dashboard">Overview</a></li>
+        <li><a href="/dashboard/products" class="active">Manage Products</a></li>
+        <li><a href="/dashboard/orders">Orders</a></li>
+        <li><a href="/dashboard/analytics">Analytics</a></li>
+      </ul>
+    </aside>
+
+    <section class="main-content">
+      <h1>Manage Products</h1>
+      
+      <button id="add-product-btn" class="btn-primary">Add New Product</button>
+      
+      <div id="product-form-container" style="display:none;">
+        <h2 id="form-title">Add New Product</h2>
+        <form id="product-form">
+          <input type="hidden" id="product-id">
+          <div class="form-group">
+            <label for="name">Product Name</label>
+            <input type="text" id="name" required>
+          </div>
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="price">Price ($)</label>
+            <input type="number" id="price" step="0.01" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="category">Category</label>
+            <input type="text" id="category">
+          </div>
+          <div class="form-group">
+            <label for="stock_quantity">Stock Quantity</label>
+            <input type="number" id="stock_quantity" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="image_url">Image URL</label>
+            <input type="text" id="image_url">
+          </div>
+          <button type="submit" class="btn-primary">Save Product</button>
+          <button type="button" id="cancel-btn" class="btn-secondary">Cancel</button>
+        </form>
+      </div>
+
+      <div class="table-responsive">
+        <table id="products-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody">
+            <!-- Products will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/products.js"></script>
+</body>
+</html>

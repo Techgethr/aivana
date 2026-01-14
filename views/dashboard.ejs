@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Dashboard - Aivana</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <div class="logo">AIVANA</div>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/products">Products</a></li>
+        <li><a href="/dashboard" class="active">Dashboard</a></li>
+        <li><a href="/logout">Logout</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="dashboard-container">
+    <aside class="sidebar">
+      <h3>Menu</h3>
+      <ul>
+        <li><a href="/dashboard">Overview</a></li>
+        <li><a href="/dashboard/products">Manage Products</a></li>
+        <li><a href="/dashboard/orders">Orders</a></li>
+        <li><a href="/dashboard/analytics">Analytics</a></li>
+      </ul>
+    </aside>
+
+    <section class="main-content">
+      <h1>Dashboard Overview</h1>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Total Products</h3>
+          <p id="total-products">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Total Orders</h3>
+          <p id="total-orders">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Total Revenue</h3>
+          <p id="total-revenue">$0.00</p>
+        </div>
+      </div>
+
+      <div class="recent-activity">
+        <h2>Recent Activity</h2>
+        <div id="activity-list">
+          <!-- Recent activity will be loaded here -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
