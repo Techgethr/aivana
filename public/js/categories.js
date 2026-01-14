@@ -83,7 +83,7 @@ async function loadCategories() {
         <td>${category.description || '-'}</td>
         <td>${new Date(category.created_at).toLocaleDateString()}</td>
         <td class="actions-cell">
-          <button onclick="editCategory(${category.id})" class="btn-primary">Edit</button>
+          <button class="btn-primary edit-category-btn" data-category-id="${category.id}">Edit</button>
         </td>
       `;
       tbody.appendChild(row);
@@ -93,6 +93,17 @@ async function loadCategories() {
     document.getElementById('categories-tbody').innerHTML = '<tr><td colspan="5">Error loading categories</td></tr>';
   }
 }
+
+// Add event listener for edit buttons after DOM content is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Use event delegation to handle clicks on dynamically added edit buttons
+  document.getElementById('categories-tbody').addEventListener('click', function(e) {
+    if (e.target.classList.contains('edit-category-btn')) {
+      const categoryId = e.target.getAttribute('data-category-id');
+      editCategory(parseInt(categoryId));
+    }
+  });
+});
 
 async function editCategory(categoryId) {
   try {

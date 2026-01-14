@@ -42,7 +42,7 @@ Available functions:
       
       // Call OpenAI API
       const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: process.env.OPENAI_MODEL,
         messages: [
           { role: "system", content: this.systemPrompt },
           { role: "user", content: context + userMessage }

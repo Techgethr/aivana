@@ -1,13 +1,13 @@
 const { createPublicClient, http, parseEther, getAddress } = require('viem');
-const { mainnet } = require('viem/chains');
+const { arcTestnet } = require('viem/chains');
 require('dotenv').config();
 
 class EthereumService {
   constructor() {
     // Initialize viem client with Ethereum RPC URL
     this.client = createPublicClient({
-      chain: mainnet, // Change to sepolia or holesky for testnets
-      transport: http(process.env.ETHEREUM_RPC_URL)
+      chain: arcTestnet,
+      transport: http(process.env.ARC_RPC_URL)
     });
 
     // Store the wallet address

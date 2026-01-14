@@ -123,7 +123,7 @@ async function loadProducts() {
         <td>${product.category_name || '-'}</td>
         <td><span class="status-badge ${product.status}">${product.status}</span></td>
         <td class="actions-cell">
-          <button onclick="editProduct(${product.id})" class="btn-primary">Edit</button>
+          <button class="btn-primary edit-product-btn" data-product-id="${product.id}">Edit</button>
         </td>
       `;
       tbody.appendChild(row);
@@ -133,6 +133,17 @@ async function loadProducts() {
     document.getElementById('products-tbody').innerHTML = '<tr><td colspan="7">Error loading products</td></tr>';
   }
 }
+
+// Add event listener for edit buttons after DOM content is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Use event delegation to handle clicks on dynamically added edit buttons
+  document.getElementById('products-tbody').addEventListener('click', function(e) {
+    if (e.target.classList.contains('edit-product-btn')) {
+      const productId = e.target.getAttribute('data-product-id');
+      editProduct(parseInt(productId));
+    }
+  });
+});
 
 async function editProduct(productId) {
   try {
