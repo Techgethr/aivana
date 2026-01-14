@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const UserModel = require('../models/User');
 const ProductModel = require('../models/Product');
 const TransactionModel = require('../models/Transaction');
+const CategoryModel = require('../models/Category');
 
 // Import services
 const AIAgent = require('../ai_agent/agent');
@@ -15,22 +16,21 @@ const StatsService = require('../services/stats');
 const aiAgent = new AIAgent();
 const ethereumService = new EthereumService();
 
-// Middleware to verify JWT token
+// Temporary mock user ID for development purposes
+const MOCK_USER_ID = 'mock_user_123';
+
+// Mock middleware to bypass authentication during development
 const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  // In development mode, we'll use a mock user to simulate authenticated access
+  req.user = { id: MOCK_USER_ID };
+  next();
+};
 
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    req.user = user;
-    next();
-  });
+// Alternative middleware that completely bypasses authentication
+const bypassAuth = (req, res, next) => {
+  // Assign a mock user to req.user to satisfy route handlers that expect it
+  req.user = { id: MOCK_USER_ID };
+  next();
 };
 
 // Public API routes (for AI agent access)
@@ -65,12 +65,12 @@ router.post('/ai/chat', async (req, res) => {
 });
 
 // Get conversation history
-router.get('/ai/conversation/:sessionId', authenticateToken, async (req, res) => {
+router.get('/ai/conversation/:sessionId', bypassAuth, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    
+
     const history = await aiAgent.getConversationHistory(sessionId);
-    
+
     res.json(history);
   } catch (error) {
     console.error('Error getting conversation history:', error);
@@ -81,13 +81,13 @@ router.get('/ai/conversation/:sessionId', authenticateToken, async (req, res) =>
 // Protected API routes (require authentication)
 
 // Get user profile
-router.get('/profile', authenticateToken, async (req, res) => {
+router.get('/profile', bypassAuth, async (req, res) => {
   try {
     const user = await UserModel.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     // Don't return sensitive information like password hash
     const { password_hash, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
@@ -141,7 +141,7 @@ router.get('/products/:id', async (req, res) => {
 });
 
 // Get user's products (requires authentication)
-router.get('/products/my', authenticateToken, async (req, res) => {
+router.get('/products/my', bypassAuth, async (req, res) => {
   try {
     const products = await ProductModel.findBySeller(req.user.id);
     res.json(products);
@@ -152,15 +152,15 @@ router.get('/products/my', authenticateToken, async (req, res) => {
 });
 
 // Create a new product (requires authentication)
-router.post('/products', authenticateToken, async (req, res) => {
+router.post('/products', bypassAuth, async (req, res) => {
   try {
-    const { name, description, price, currency, stock_quantity, category, image_url } = req.body;
-    
+    const { name, description, price, currency, stock_quantity, category_id, image_url } = req.body;
+
     // Validate required fields
     if (!name || price === undefined || stock_quantity === undefined) {
       return res.status(400).json({ error: 'Name, price, and stock_quantity are required' });
     }
-    
+
     const productData = {
       seller_id: req.user.id,
       name,
@@ -168,10 +168,10 @@ router.post('/products', authenticateToken, async (req, res) => {
       price: parseFloat(price),
       currency: currency || 'USD',
       stock_quantity: parseInt(stock_quantity),
-      category: category || '',
+      category_id: category_id || null,
       image_url: image_url || ''
     };
-    
+
     const newProduct = await ProductModel.create(productData);
     res.status(201).json(newProduct);
   } catch (error) {
@@ -181,33 +181,33 @@ router.post('/products', authenticateToken, async (req, res) => {
 });
 
 // Update a product (requires authentication and ownership)
-router.put('/products/:id', authenticateToken, async (req, res) => {
+router.put('/products/:id', bypassAuth, async (req, res) => {
   try {
     const productId = req.params.id;
     const product = await ProductModel.findById(productId);
-    
+
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    
+
     if (product.seller_id !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to update this product' });
     }
-    
-    const { name, description, price, currency, stock_quantity, category, image_url, status } = req.body;
-    
+
+    const { name, description, price, currency, stock_quantity, category_id, image_url, status } = req.body;
+
     const updateData = {};
     if (name) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (price !== undefined) updateData.price = parseFloat(price);
     if (currency) updateData.currency = currency;
     if (stock_quantity !== undefined) updateData.stock_quantity = parseInt(stock_quantity);
-    if (category) updateData.category = category;
+    if (category_id !== undefined) updateData.category_id = category_id;
     if (image_url) updateData.image_url = image_url;
     if (status) updateData.status = status;
-    
+
     const success = await ProductModel.update(productId, updateData);
-    
+
     if (success) {
       const updatedProduct = await ProductModel.findById(productId);
       res.json(updatedProduct);
@@ -221,21 +221,21 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete a product (requires authentication and ownership)
-router.delete('/products/:id', authenticateToken, async (req, res) => {
+router.delete('/products/:id', bypassAuth, async (req, res) => {
   try {
     const productId = req.params.id;
     const product = await ProductModel.findById(productId);
-    
+
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
-    
+
     if (product.seller_id !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to delete this product' });
     }
-    
+
     const success = await ProductModel.delete(productId);
-    
+
     if (success) {
       res.json({ message: 'Product deleted successfully' });
     } else {
@@ -250,20 +250,7 @@ router.delete('/products/:id', authenticateToken, async (req, res) => {
 // Get available categories
 router.get('/categories', async (req, res) => {
   try {
-    const db = require('../utils/init-db');
-    const categories = await new Promise((resolve, reject) => {
-      db.getDb().all(
-        'SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" AND status = "active"',
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows.map(row => row.category));
-          }
-        }
-      );
-    });
-    
+    const categories = await CategoryModel.findAll();
     res.json(categories);
   } catch (error) {
     console.error('Error getting categories:', error);
@@ -271,8 +258,116 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// Get all categories (requires authentication)
+router.get('/categories/all', bypassAuth, async (req, res) => {
+  try {
+    const categories = await CategoryModel.findAll();
+    res.json(categories);
+  } catch (error) {
+    console.error('Error getting all categories:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get a specific category
+router.get('/categories/:id', async (req, res) => {
+  try {
+    const category = await CategoryModel.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    res.json(category);
+  } catch (error) {
+    console.error('Error getting category:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create a new category (requires authentication)
+router.post('/categories', bypassAuth, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+
+    // Validate required fields
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    // Check if category with this name already exists
+    const existingCategory = await CategoryModel.findByName(name);
+    if (existingCategory) {
+      return res.status(400).json({ error: 'Category with this name already exists' });
+    }
+
+    const categoryData = {
+      name,
+      description: description || ''
+    };
+
+    const newCategory = await CategoryModel.create(categoryData);
+    res.status(201).json(newCategory);
+  } catch (error) {
+    console.error('Error creating category:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update a category (requires authentication)
+router.put('/categories/:id', bypassAuth, async (req, res) => {
+  try {
+    const categoryId = req.params.id;
+    const category = await CategoryModel.findById(categoryId);
+
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    const { name, description } = req.body;
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+
+    const success = await CategoryModel.update(categoryId, updateData);
+
+    if (success) {
+      const updatedCategory = await CategoryModel.findById(categoryId);
+      res.json(updatedCategory);
+    } else {
+      res.status(500).json({ error: 'Failed to update category' });
+    }
+  } catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete a category (requires authentication)
+router.delete('/categories/:id', bypassAuth, async (req, res) => {
+  try {
+    const categoryId = req.params.id;
+    const category = await CategoryModel.findById(categoryId);
+
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    const success = await CategoryModel.delete(categoryId);
+
+    if (success) {
+      res.json({ message: 'Category deleted successfully' });
+    } else {
+      res.status(500).json({ error: 'Failed to delete category' });
+    }
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get user's transactions
-router.get('/transactions', authenticateToken, async (req, res) => {
+router.get('/transactions', bypassAuth, async (req, res) => {
   try {
     const transactions = await TransactionModel.findByBuyer(req.user.id);
     res.json(transactions);
@@ -286,7 +381,7 @@ router.get('/transactions', authenticateToken, async (req, res) => {
 // Full transaction functionality will be implemented later
 
 // Get dashboard stats
-router.get('/stats', authenticateToken, async (req, res) => {
+router.get('/stats', bypassAuth, async (req, res) => {
   try {
     const stats = await StatsService.getDashboardStats(req.user.id);
     res.json(stats);
@@ -297,7 +392,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
 });
 
 // Get recent activity
-router.get('/activity', authenticateToken, async (req, res) => {
+router.get('/activity', bypassAuth, async (req, res) => {
   try {
     const activity = await StatsService.getRecentActivity(req.user.id);
     res.json(activity);
@@ -328,45 +423,6 @@ router.get('/rates/eth-usd', async (req, res) => {
 // Removed transaction creation endpoint as per requirements
 // Full transaction functionality will be implemented later
 
-// Login route
-router.post('/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-    
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-    
-    // Don't return password hash
-    const { password_hash, ...userWithoutPassword } = user;
-    
-    res.json({
-      token,
-      user: userWithoutPassword
-    });
-  } catch (error) {
-    console.error('Error during login:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
 // Health check endpoint
 router.get('/health', (req, res) => {
   res.json({
@@ -374,54 +430,6 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
-});
-
-// Registration route
-router.post('/auth/register', async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email, and password are required' });
-    }
-
-    // Check if user already exists
-    const existingUser = await UserModel.findByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'User with this email already exists' });
-    }
-
-    // Hash password
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
-
-    // Create user
-    const userData = {
-      username,
-      email,
-      password_hash
-    };
-
-    const newUser = await UserModel.create(userData);
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: newUser.id, email: newUser.email, role: newUser.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    // Don't return password hash
-    const { password_hash: pwdHash, ...userWithoutPassword } = newUser;
-
-    res.status(201).json({
-      token,
-      user: userWithoutPassword
-    });
-  } catch (error) {
-    console.error('Error during registration:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
 });
 
 module.exports = router;

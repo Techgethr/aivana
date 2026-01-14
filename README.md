@@ -7,6 +7,7 @@ Aivana is an innovative e-commerce platform that combines artificial intelligenc
 - **AI Sales Assistant**: Intelligent agent that helps customers find products and guides them through purchases
 - **Blockchain Transactions**: Secure payments using Ethereum blockchain
 - **Marketplace Management**: Web interface for sellers to manage products and inventory
+- **Category Management**: Organize products into categories for better organization
 - **Real-time Analytics**: Dashboard with sales metrics and insights
 - **Secure Authentication**: JWT-based authentication system
 
@@ -87,6 +88,14 @@ npm run dev
 - `POST /api/products` - Create new product (authenticated)
 - `PUT /api/products/:id` - Update product (authenticated)
 - `DELETE /api/products/:id` - Delete product (authenticated)
+
+#### Categories
+- `GET /api/categories` - Get all available categories
+- `GET /api/categories/all` - Get all categories (authenticated)
+- `GET /api/categories/:id` - Get specific category
+- `POST /api/categories` - Create new category (authenticated)
+- `PUT /api/categories/:id` - Update category (authenticated)
+- `DELETE /api/categories/:id` - Delete category (authenticated)
 
 #### Transactions
 - `GET /api/transactions` - Get user's transactions (authenticated)

@@ -37,12 +37,13 @@ class Database {
         price REAL NOT NULL,
         currency TEXT DEFAULT 'USD',
         stock_quantity INTEGER DEFAULT 0,
-        category TEXT,
+        category_id INTEGER,
         image_url TEXT,
         status TEXT DEFAULT 'active',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (seller_id) REFERENCES users(id)
+        FOREIGN KEY (seller_id) REFERENCES users(id),
+        FOREIGN KEY (category_id) REFERENCES categories(id)
       )
     `);
 
@@ -60,6 +61,17 @@ class Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (buyer_id) REFERENCES users(id),
         FOREIGN KEY (product_id) REFERENCES products(id)
+      )
+    `);
+
+    // Categories table
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -105,12 +117,48 @@ class Database {
 
         console.log('Sample users inserted');
 
-        // Wait a bit for users to be inserted, then add products
+        // Wait a bit for users to be inserted, then add categories and products
         setTimeout(() => {
-          this.insertSampleProducts();
+          this.insertSampleCategories();
         }, 500);
       }
     });
+  }
+
+  insertSampleCategories() {
+    // Insert sample categories
+    const categories = [
+      { name: 'Electronics', description: 'Electronic devices and accessories' },
+      { name: 'Clothing', description: 'Apparel and fashion items' },
+      { name: 'Home', description: 'Home and kitchen products' },
+      { name: 'Books', description: 'Books and educational materials' },
+      { name: 'Sports', description: 'Sports and outdoor equipment' },
+      { name: 'Beauty', description: 'Beauty and personal care products' }
+    ];
+
+    // Check if categories table is empty
+    this.db.get('SELECT COUNT(*) as count FROM categories', [], (err, row) => {
+      if (err) {
+        console.error('Error checking categories table:', err);
+        return;
+      }
+
+      if (row.count === 0) {
+        categories.forEach(category => {
+          this.db.run(`
+            INSERT INTO categories (name, description)
+            VALUES (?, ?)
+          `, [category.name, category.description]);
+        });
+
+        console.log('Sample categories inserted');
+      }
+    });
+
+    // Wait a bit for categories to be inserted, then add products
+    setTimeout(() => {
+      this.insertSampleProducts();
+    }, 500);
   }
 
   insertSampleProducts() {
@@ -131,7 +179,7 @@ class Database {
             price: 129.99,
             currency: 'USD',
             stock_quantity: 50,
-            category: 'Electronics',
+            category_name: 'Electronics',
             image_url: 'https://placehold.co/300x300?text=Headphones'
           },
           {
@@ -141,7 +189,7 @@ class Database {
             price: 199.99,
             currency: 'USD',
             stock_quantity: 30,
-            category: 'Electronics',
+            category_name: 'Electronics',
             image_url: 'https://placehold.co/300x300?text=Watch'
           },
           {
@@ -151,7 +199,7 @@ class Database {
             price: 24.99,
             currency: 'USD',
             stock_quantity: 100,
-            category: 'Clothing',
+            category_name: 'Clothing',
             image_url: 'https://placehold.co/300x300?text=T-Shirt'
           },
           {
@@ -161,25 +209,37 @@ class Database {
             price: 29.99,
             currency: 'USD',
             stock_quantity: 75,
-            category: 'Home',
+            category_name: 'Home',
             image_url: 'https://placehold.co/300x300?text=Bottle'
           }
         ];
 
+        // For each product, get the category ID based on the category name
         products.forEach(product => {
-          this.db.run(`
-            INSERT INTO products (seller_id, name, description, price, currency, stock_quantity, category, image_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `, [
-            product.seller_id,
-            product.name,
-            product.description,
-            product.price,
-            product.currency,
-            product.stock_quantity,
-            product.category,
-            product.image_url
-          ]);
+          this.db.get(`
+            SELECT id FROM categories WHERE name = ?
+          `, [product.category_name], (err, categoryRow) => {
+            if (err) {
+              console.error('Error getting category ID:', err);
+              return;
+            }
+
+            let categoryId = categoryRow ? categoryRow.id : null;
+
+            this.db.run(`
+              INSERT INTO products (seller_id, name, description, price, currency, stock_quantity, category_id, image_url)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+              product.seller_id,
+              product.name,
+              product.description,
+              product.price,
+              product.currency,
+              product.stock_quantity,
+              categoryId,
+              product.image_url
+            ]);
+          });
         });
 
         console.log('Sample products inserted');

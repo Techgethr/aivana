@@ -1,4 +1,4 @@
-const db = require('../database/db');
+const db = require('../utils/init-db');
 
 class StatsService {
   // Get dashboard statistics
