@@ -31,7 +31,6 @@ class Database {
     this.db.run(`
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        seller_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         description TEXT,
         price REAL NOT NULL,
@@ -42,7 +41,6 @@ class Database {
         status TEXT DEFAULT 'active',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (seller_id) REFERENCES users(id),
         FOREIGN KEY (category_id) REFERENCES categories(id)
       )
     `);
@@ -173,7 +171,6 @@ class Database {
         // Insert sample products
         const products = [
           {
-            seller_id: 2, // seller1
             name: 'Wireless Bluetooth Headphones',
             description: 'High-quality wireless headphones with noise cancellation and 30-hour battery life.',
             price: 129.99,
@@ -183,7 +180,6 @@ class Database {
             image_url: 'https://placehold.co/300x300?text=Headphones'
           },
           {
-            seller_id: 2,
             name: 'Smart Fitness Watch',
             description: 'Track your heart rate, sleep, and workouts with this advanced smartwatch.',
             price: 199.99,
@@ -193,7 +189,6 @@ class Database {
             image_url: 'https://placehold.co/300x300?text=Watch'
           },
           {
-            seller_id: 2,
             name: 'Organic Cotton T-Shirt',
             description: 'Comfortable and eco-friendly t-shirt made from 100% organic cotton.',
             price: 24.99,
@@ -203,7 +198,6 @@ class Database {
             image_url: 'https://placehold.co/300x300?text=T-Shirt'
           },
           {
-            seller_id: 2,
             name: 'Stainless Steel Water Bottle',
             description: 'Keep your drinks hot or cold for hours with this durable water bottle.',
             price: 29.99,
@@ -227,10 +221,9 @@ class Database {
             let categoryId = categoryRow ? categoryRow.id : null;
 
             this.db.run(`
-              INSERT INTO products (seller_id, name, description, price, currency, stock_quantity, category_id, image_url)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO products (name, description, price, currency, stock_quantity, category_id, image_url)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
             `, [
-              product.seller_id,
               product.name,
               product.description,
               product.price,

@@ -16,20 +16,20 @@ const StatsService = require('../services/stats');
 const aiAgent = new AIAgent();
 const ethereumService = new EthereumService();
 
-// Temporary mock user ID for development purposes
-const MOCK_USER_ID = 'mock_user_123';
+// Single seller ID for the platform
+const SINGLE_SELLER_ID = 1; // Using the ID of the first user in the DB
 
 // Mock middleware to bypass authentication during development
 const authenticateToken = (req, res, next) => {
-  // In development mode, we'll use a mock user to simulate authenticated access
-  req.user = { id: MOCK_USER_ID };
+  // In development mode, we'll use the single seller ID
+  req.user = { id: SINGLE_SELLER_ID };
   next();
 };
 
 // Alternative middleware that completely bypasses authentication
 const bypassAuth = (req, res, next) => {
-  // Assign a mock user to req.user to satisfy route handlers that expect it
-  req.user = { id: MOCK_USER_ID };
+  // Assign the single seller ID to req.user to satisfy route handlers that expect it
+  req.user = { id: SINGLE_SELLER_ID };
   next();
 };
 
@@ -83,14 +83,14 @@ router.get('/ai/conversation/:sessionId', bypassAuth, async (req, res) => {
 // Get user profile
 router.get('/profile', bypassAuth, async (req, res) => {
   try {
-    const user = await UserModel.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Don't return sensitive information like password hash
-    const { password_hash, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    // Return a fixed seller profile since there's only one seller
+    const sellerProfile = {
+      id: req.user.id,
+      username: 'Main Seller',
+      email: 'seller@aivana.com',
+      role: 'seller'
+    };
+    res.json(sellerProfile);
   } catch (error) {
     console.error('Error getting profile:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -140,13 +140,13 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
-// Get user's products (requires authentication)
+// Get all products (since there's only one seller)
 router.get('/products/my', bypassAuth, async (req, res) => {
   try {
     const products = await ProductModel.findBySeller(req.user.id);
     res.json(products);
   } catch (error) {
-    console.error('Error getting user products:', error);
+    console.error('Error getting products:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -162,7 +162,6 @@ router.post('/products', bypassAuth, async (req, res) => {
     }
 
     const productData = {
-      seller_id: req.user.id,
       name,
       description: description || '',
       price: parseFloat(price),
@@ -180,7 +179,7 @@ router.post('/products', bypassAuth, async (req, res) => {
   }
 });
 
-// Update a product (requires authentication and ownership)
+// Update a product (requires authentication)
 router.put('/products/:id', bypassAuth, async (req, res) => {
   try {
     const productId = req.params.id;
@@ -188,10 +187,6 @@ router.put('/products/:id', bypassAuth, async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
-    }
-
-    if (product.seller_id !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to update this product' });
     }
 
     const { name, description, price, currency, stock_quantity, category_id, image_url, status } = req.body;
@@ -220,7 +215,7 @@ router.put('/products/:id', bypassAuth, async (req, res) => {
   }
 });
 
-// Delete a product (requires authentication and ownership)
+// Delete a product (requires authentication)
 router.delete('/products/:id', bypassAuth, async (req, res) => {
   try {
     const productId = req.params.id;
@@ -228,10 +223,6 @@ router.delete('/products/:id', bypassAuth, async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
-    }
-
-    if (product.seller_id !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to delete this product' });
     }
 
     const success = await ProductModel.delete(productId);
@@ -369,7 +360,23 @@ router.delete('/categories/:id', bypassAuth, async (req, res) => {
 // Get user's transactions
 router.get('/transactions', bypassAuth, async (req, res) => {
   try {
-    const transactions = await TransactionModel.findByBuyer(req.user.id);
+    // Get all transactions (since there's only one seller, we might want to show all transactions)
+    const db = require('../utils/init-db');
+    const transactions = await new Promise((resolve, reject) => {
+      db.getDb().all(
+        `SELECT t.*, u.username as buyer_name, p.name as product_name
+         FROM transactions t
+         JOIN users u ON t.buyer_id = u.id
+         JOIN products p ON t.product_id = p.id`,
+        (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        }
+      );
+    });
     res.json(transactions);
   } catch (error) {
     console.error('Error getting transactions:', error);
@@ -383,7 +390,8 @@ router.get('/transactions', bypassAuth, async (req, res) => {
 // Get dashboard stats
 router.get('/stats', bypassAuth, async (req, res) => {
   try {
-    const stats = await StatsService.getDashboardStats(req.user.id);
+    // Get stats for the single seller (using a fixed ID)
+    const stats = await StatsService.getDashboardStats(1); // Using the first user ID
     res.json(stats);
   } catch (error) {
     console.error('Error getting stats:', error);
@@ -394,7 +402,8 @@ router.get('/stats', bypassAuth, async (req, res) => {
 // Get recent activity
 router.get('/activity', bypassAuth, async (req, res) => {
   try {
-    const activity = await StatsService.getRecentActivity(req.user.id);
+    // Get activity for the single seller (using a fixed ID)
+    const activity = await StatsService.getRecentActivity(1); // Using the first user ID
     res.json(activity);
   } catch (error) {
     console.error('Error getting activity:', error);

@@ -4,25 +4,24 @@ class StatsService {
   // Get dashboard statistics
   static async getDashboardStats(userId) {
     return new Promise((resolve, reject) => {
-      // Query to get total products for this user
-      const totalProductsQuery = 'SELECT COUNT(*) as count FROM products WHERE seller_id = ?';
-      
-      // Query to get total orders for this user's products
+      // Query to get total products (since there's only one seller, get all products)
+      const totalProductsQuery = 'SELECT COUNT(*) as count FROM products';
+
+      // Query to get total orders for all products
       const totalOrdersQuery = `
-        SELECT COUNT(*) as count 
-        FROM transactions t 
-        JOIN products p ON t.product_id = p.id 
-        WHERE p.seller_id = ?
+        SELECT COUNT(*) as count
+        FROM transactions t
+        JOIN products p ON t.product_id = p.id
       `;
-      
-      // Query to get total revenue for this user's products
+
+      // Query to get total revenue for all products
       const totalRevenueQuery = `
-        SELECT SUM(total_price) as revenue 
-        FROM transactions t 
-        JOIN products p ON t.product_id = p.id 
-        WHERE p.seller_id = ? AND t.status = 'completed'
+        SELECT SUM(total_price) as revenue
+        FROM transactions t
+        JOIN products p ON t.product_id = p.id
+        WHERE t.status = 'completed'
       `;
-      
+
       // Execute all queries in parallel using nested callbacks
       let completedQueries = 0;
       let results = {
@@ -30,44 +29,44 @@ class StatsService {
         totalOrders: 0,
         totalRevenue: 0
       };
-      
+
       // Total products query
-      db.getDb().get(totalProductsQuery, [userId], (err, row) => {
+      db.getDb().get(totalProductsQuery, (err, row) => {
         if (err) {
           reject(err);
           return;
         }
         results.totalProducts = row.count || 0;
         completedQueries++;
-        
+
         if (completedQueries === 3) {
           resolve(results);
         }
       });
-      
+
       // Total orders query
-      db.getDb().get(totalOrdersQuery, [userId], (err, row) => {
+      db.getDb().get(totalOrdersQuery, (err, row) => {
         if (err) {
           reject(err);
           return;
         }
         results.totalOrders = row.count || 0;
         completedQueries++;
-        
+
         if (completedQueries === 3) {
           resolve(results);
         }
       });
-      
+
       // Total revenue query
-      db.getDb().get(totalRevenueQuery, [userId], (err, row) => {
+      db.getDb().get(totalRevenueQuery, (err, row) => {
         if (err) {
           reject(err);
           return;
         }
         results.totalRevenue = parseFloat(row.revenue || 0).toFixed(2);
         completedQueries++;
-        
+
         if (completedQueries === 3) {
           resolve(results);
         }
@@ -79,29 +78,27 @@ class StatsService {
   static async getRecentActivity(userId, limit = 10) {
     return new Promise((resolve, reject) => {
       const query = `
-        SELECT 
+        SELECT
           'order' as type,
           'New order placed' as description,
           t.created_at as timestamp
         FROM transactions t
         JOIN products p ON t.product_id = p.id
-        WHERE p.seller_id = ?
-        AND t.status = 'completed'
-        
+        WHERE t.status = 'completed'
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
           'product' as type,
           'Product updated: ' || name as description,
           updated_at as timestamp
         FROM products
-        WHERE seller_id = ?
-        
+
         ORDER BY timestamp DESC
         LIMIT ?
       `;
-      
-      db.getDb().all(query, [userId, userId, limit], (err, rows) => {
+
+      db.getDb().all(query, [limit], (err, rows) => {
         if (err) {
           reject(err);
         } else {

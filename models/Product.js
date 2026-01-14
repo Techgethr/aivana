@@ -3,13 +3,13 @@ const db = require('../utils/init-db');
 class ProductModel {
   static async create(productData) {
     return new Promise((resolve, reject) => {
-      const { seller_id, name, description, price, currency, stock_quantity, category_id, image_url } = productData;
+      const { name, description, price, currency, stock_quantity, category_id, image_url } = productData;
       const stmt = db.getDb().prepare(
         `INSERT INTO products
-         (seller_id, name, description, price, currency, stock_quantity, category_id, image_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         (name, description, price, currency, stock_quantity, category_id, image_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       );
-      stmt.run([seller_id, name, description, price, currency, stock_quantity, category_id, image_url], function(err) {
+      stmt.run([name, description, price, currency, stock_quantity, category_id, image_url], function(err) {
         if (err) {
           reject(err);
         } else {
@@ -23,9 +23,8 @@ class ProductModel {
   static async findAll() {
     return new Promise((resolve, reject) => {
       db.getDb().all(
-        `SELECT p.*, u.username as seller_name, c.name as category_name
+        `SELECT p.*, c.name as category_name
          FROM products p
-         JOIN users u ON p.seller_id = u.id
          LEFT JOIN categories c ON p.category_id = c.id
          WHERE p.status = 'active'`,
         (err, rows) => {
@@ -42,9 +41,8 @@ class ProductModel {
   static async findById(id) {
     return new Promise((resolve, reject) => {
       db.getDb().get(
-        `SELECT p.*, u.username as seller_name, c.name as category_name
+        `SELECT p.*, c.name as category_name
          FROM products p
-         JOIN users u ON p.seller_id = u.id
          LEFT JOIN categories c ON p.category_id = c.id
          WHERE p.id = ? AND p.status = 'active'`,
         [id],
@@ -60,13 +58,13 @@ class ProductModel {
   }
 
   static async findBySeller(sellerId) {
+    // Since there's only one seller now, return all products
     return new Promise((resolve, reject) => {
       db.getDb().all(
         `SELECT p.*, c.name as category_name
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.seller_id = ?`,
-        [sellerId],
+         WHERE p.status = 'active'`,
         (err, rows) => {
           if (err) {
             reject(err);

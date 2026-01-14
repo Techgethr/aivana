@@ -68,7 +68,6 @@ async function loadProducts() {
           <p class="product-description">${product.description || 'No description available'}</p>
           <div class="product-price">$${parseFloat(product.price).toFixed(2)}</div>
           <div class="product-stock">In Stock: ${product.stock_quantity}</div>
-          <div class="product-seller">Sold by: ${product.seller_name}</div>
           <div class="product-actions">
             <button class="btn-primary" onclick="buyProduct(${product.id})">Buy Now</button>
             <button class="btn-secondary" onclick="askAI('${encodeURIComponent(product.name)}')">Ask AI</button>
@@ -92,8 +91,8 @@ async function loadCategories() {
     
     categories.forEach(category => {
       const option = document.createElement('option');
-      option.value = category;
-      option.textContent = category;
+      option.value = category.id;
+      option.textContent = category.name;
       categoryFilter.appendChild(option);
     });
   } catch (error) {
