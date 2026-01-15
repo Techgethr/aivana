@@ -43,5 +43,24 @@ router.get('/dashboard/categories', (req, res) => {
   res.render('categories_manage');
 });
 
+// Product detail page
+router.get('/product/:id', async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const ProductModel = require('../models/Product');
+
+    const product = await ProductModel.findById(productId);
+
+    if (!product) {
+      return res.status(404).render('error', { message: 'Product not found' });
+    }
+
+    res.render('product_detail', { product });
+  } catch (error) {
+    console.error('Error loading product details:', error);
+    res.status(500).render('error', { message: 'Error loading product details' });
+  }
+});
+
 
 module.exports = router;

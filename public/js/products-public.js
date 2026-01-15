@@ -3,10 +3,18 @@
 document.addEventListener('DOMContentLoaded', function() {
   loadProducts();
   loadCategories();
-  
+
   // Setup search and filter
   document.getElementById('search-input').addEventListener('input', debounce(loadProducts, 300));
   document.getElementById('category-filter').addEventListener('change', loadProducts);
+
+  // Event delegation for dynamically created elements
+  document.getElementById('products-grid').addEventListener('click', function(e) {
+    if (e.target.classList.contains('view-details-btn')) {
+      const productId = e.target.getAttribute('data-product-id');
+      viewProductDetails(productId);
+    }
+  });
 });
 
 function debounce(func, wait) {
@@ -58,8 +66,8 @@ async function loadProducts() {
       productCard.className = 'product-card';
       productCard.innerHTML = `
         <div class="product-image">
-          ${product.image_url ? 
-            `<img src="${product.image_url}" alt="${product.name}">` : 
+          ${product.image_url ?
+            `<img src="${product.image_url}" alt="${product.name}">` :
             '<div class="placeholder-image">No Image</div>'
           }
         </div>
@@ -69,13 +77,13 @@ async function loadProducts() {
           <div class="product-price">$${parseFloat(product.price).toFixed(2)}</div>
           <div class="product-stock">In Stock: ${product.stock_quantity}</div>
           <div class="product-actions">
-            <button class="btn-primary" onclick="buyProduct(${product.id})">Buy Now</button>
-            <button class="btn-secondary" onclick="askAI('${encodeURIComponent(product.name)}')">Ask AI</button>
+            <button class="btn-primary view-details-btn" data-product-id="${product.id}">View Details</button>
           </div>
         </div>
       `;
       productsGrid.appendChild(productCard);
     });
+
   } catch (error) {
     console.error('Error loading products:', error);
     document.getElementById('products-grid').innerHTML = '<p>Error loading products</p>';
@@ -100,14 +108,7 @@ async function loadCategories() {
   }
 }
 
-function buyProduct(productId) {
-  // In a real implementation, this would start the purchase process
-  // For now, we'll just show an alert
-  alert(`Ready to purchase product ID: ${productId}. In a full implementation, this would connect to the blockchain transaction system.`);
-}
-
-function askAI(productName) {
-  // In a real implementation, this would open the AI chat interface
-  // For now, we'll just show an alert
-  alert(`Asking AI about: ${decodeURIComponent(productName)}. In a full implementation, this would open the AI assistant interface.`);
+function viewProductDetails(productId) {
+  // Redirect to the product details page
+  window.location.href = `/product/${productId}`;
 }
