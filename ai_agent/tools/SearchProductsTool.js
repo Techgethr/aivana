@@ -22,8 +22,18 @@ class SearchProductsTool extends BaseTool {
   async execute(args) {
     try {
       const { query } = args;
-      
-      // Get all products
+
+      // Try semantic search first
+      try {
+        const semanticResults = await ProductModel.findBySemanticSimilarity(query, 5);
+        if (semanticResults && semanticResults.length > 0) {
+          return semanticResults;
+        }
+      } catch (semanticError) {
+        console.warn('Semantic search failed, falling back to regular search:', semanticError.message);
+      }
+
+      // Fallback to regular search
       const allProducts = await ProductModel.findAll();
 
       // Filter products based on query (simple text matching)
