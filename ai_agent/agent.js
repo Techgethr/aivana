@@ -1,6 +1,6 @@
 const OpenAI = require('openai');
 const ProductModel = require('../models/Product');
-const { SearchProductsTool, GetProductDetailsTool } = require('./tools');
+const { registerAllTools } = require('./toolRegistry');
 require('dotenv').config();
 
 class AIAgent {
@@ -28,14 +28,10 @@ class AIAgent {
   }
 
   /**
-   * Register all available tools
+   * Register all available tools using the tool registry
    */
   registerAllTools() {
-    const { SearchProductsTool, GetProductDetailsTool } = require('./tools');
-
-    // Register all known tools
-    this.registerTool(new SearchProductsTool());
-    this.registerTool(new GetProductDetailsTool());
+    registerAllTools(this);
   }
 
   /**
@@ -154,35 +150,6 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
     }
   }
 
-  async searchProducts(query) {
-    try {
-      // Simple search implementation - in a real app, this would be more sophisticated
-      const allProducts = await ProductModel.findAll();
-
-      // Filter products based on query (simple text matching)
-      const lowerQuery = query.toLowerCase();
-      const filteredProducts = allProducts.filter(product =>
-        product.name.toLowerCase().includes(lowerQuery) ||
-        (product.description && product.description.toLowerCase().includes(lowerQuery)) ||
-        (product.category_name && product.category_name.toLowerCase().includes(lowerQuery))
-      );
-
-      // Return top 5 matching products
-      return filteredProducts.slice(0, 5);
-    } catch (error) {
-      console.error('Error searching products:', error);
-      return [];
-    }
-  }
-
-  async getProductDetails(productId) {
-    try {
-      return await ProductModel.findById(productId);
-    } catch (error) {
-      console.error('Error getting product details:', error);
-      return null;
-    }
-  }
 
   async saveConversation(userId, sessionId, message, senderType) {
     try {
