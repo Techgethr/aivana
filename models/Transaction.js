@@ -1,93 +1,92 @@
-const db = require('../database/db');
+const db = require('../utils/init-db');
 
 class TransactionModel {
   static async create(transactionData) {
-    return new Promise((resolve, reject) => {
-      const { buyer_id, product_id, quantity, total_price, currency } = transactionData;
-      const stmt = db.getDb().prepare(
-        `INSERT INTO transactions 
-         (buyer_id, product_id, quantity, total_price, currency) 
-         VALUES (?, ?, ?, ?, ?)`
-      );
-      stmt.run([buyer_id, product_id, quantity, total_price, currency], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ id: this.lastID, ...transactionData, status: 'pending' });
-        }
-      });
-      stmt.finalize();
-    });
+    const { data, error } = await db.getDb()
+      .from('transactions')
+      .insert([transactionData])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
-  static async findById(id) {
-    return new Promise((resolve, reject) => {
-      db.getDb().get(
-        `SELECT t.*, u.username as buyer_name, p.name as product_name 
-         FROM transactions t 
-         JOIN users u ON t.buyer_id = u.id 
-         JOIN products p ON t.product_id = p.id 
-         WHERE t.id = ?`,
-        [id],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        }
-      );
-    });
+  static async findAll() {
+    const { data, error } = await db.getDb()
+      .from('transactions')
+      .select(`
+        *,
+        users(username as buyer_name),
+        products(name as product_name)
+      `);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findByBuyer(buyerId) {
-    return new Promise((resolve, reject) => {
-      db.getDb().all(
-        `SELECT t.*, p.name as product_name, p.image_url 
-         FROM transactions t 
-         JOIN products p ON t.product_id = p.id 
-         WHERE t.buyer_id = ? 
-         ORDER BY t.created_at DESC`,
-        [buyerId],
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('transactions')
+      .select(`
+        *,
+        products(name as product_name)
+      `)
+      .eq('buyer_id', buyerId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
-  static async updateStatus(id, status, ethTransactionHash = null) {
-    return new Promise((resolve, reject) => {
-      let stmt;
-      if (ethTransactionHash) {
-        stmt = db.getDb().prepare(
-          'UPDATE transactions SET status = ?, eth_transaction_hash = ? WHERE id = ?'
-        );
-        stmt.run([status, ethTransactionHash, id], function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(this.changes > 0);
-          }
-        });
-      } else {
-        stmt = db.getDb().prepare(
-          'UPDATE transactions SET status = ? WHERE id = ?'
-        );
-        stmt.run([status, id], function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(this.changes > 0);
-          }
-        });
-      }
-      stmt.finalize();
-    });
+  static async findById(id) {
+    const { data, error } = await db.getDb()
+      .from('transactions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
+
+  static async update(id, updateData) {
+    const { data, error } = await db.getDb()
+      .from('transactions')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return !!data;
+  }
+
+  static async delete(id) {
+    const { data, error } = await db.getDb()
+      .from('transactions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return !!data;
   }
 }
 

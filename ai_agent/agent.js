@@ -154,11 +154,18 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
   async saveConversation(userId, sessionId, message, senderType) {
     try {
       const db = require('../database/db');
-      const stmt = db.getDb().prepare(
-        'INSERT INTO conversations (user_id, session_id, message, sender_type) VALUES (?, ?, ?, ?)'
-      );
-      stmt.run([userId, sessionId, message, senderType]);
-      stmt.finalize();
+      const { error } = await db.getDb()
+        .from('conversations')
+        .insert([{
+          user_id: userId,
+          session_id: sessionId,
+          message: message,
+          sender_type: senderType
+        }]);
+
+      if (error) {
+        console.error('Error saving conversation:', error);
+      }
     } catch (error) {
       console.error('Error saving conversation:', error);
     }
@@ -167,19 +174,18 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
   async getConversationHistory(sessionId) {
     try {
       const db = require('../database/db');
-      return new Promise((resolve, reject) => {
-        db.getDb().all(
-          'SELECT * FROM conversations WHERE session_id = ? ORDER BY timestamp ASC',
-          [sessionId],
-          (err, rows) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve(rows);
-            }
-          }
-        );
-      });
+      const { data, error } = await db.getDb()
+        .from('conversations')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('timestamp', { ascending: true });
+
+      if (error) {
+        console.error('Error getting conversation history:', error);
+        return [];
+      }
+
+      return data;
     } catch (error) {
       console.error('Error getting conversation history:', error);
       return [];

@@ -3,109 +3,85 @@ const db = require('../utils/init-db');
 class StatsService {
   // Get dashboard statistics
   static async getDashboardStats(userId) {
-    return new Promise((resolve, reject) => {
+    try {
       // Query to get total products (since there's only one seller, get all products)
-      const totalProductsQuery = 'SELECT COUNT(*) as count FROM products';
+      const { count: totalProducts } = await db.getDb()
+        .from('products')
+        .select('*', { count: 'exact', head: true });
 
       // Query to get total orders for all products
-      const totalOrdersQuery = `
-        SELECT COUNT(*) as count
-        FROM transactions t
-        JOIN products p ON t.product_id = p.id
-      `;
+      const { count: totalOrders } = await db.getDb()
+        .from('transactions')
+        .select('*', { count: 'exact', head: true });
 
       // Query to get total revenue for all products
-      const totalRevenueQuery = `
-        SELECT SUM(total_price) as revenue
-        FROM transactions t
-        JOIN products p ON t.product_id = p.id
-        WHERE t.status = 'completed'
-      `;
+      const { data: revenueData, error: revenueError } = await db.getDb()
+        .from('transactions')
+        .select('SUM(total_price) as revenue')
+        .eq('status', 'completed');
 
-      // Execute all queries in parallel using nested callbacks
-      let completedQueries = 0;
-      let results = {
-        totalProducts: 0,
-        totalOrders: 0,
-        totalRevenue: 0
+      let totalRevenue = 0;
+      if (!revenueError && revenueData && revenueData[0]) {
+        totalRevenue = parseFloat(revenueData[0].revenue || 0).toFixed(2);
+      }
+
+      return {
+        totalProducts: totalProducts || 0,
+        totalOrders: totalOrders || 0,
+        totalRevenue: totalRevenue
       };
-
-      // Total products query
-      db.getDb().get(totalProductsQuery, (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        results.totalProducts = row.count || 0;
-        completedQueries++;
-
-        if (completedQueries === 3) {
-          resolve(results);
-        }
-      });
-
-      // Total orders query
-      db.getDb().get(totalOrdersQuery, (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        results.totalOrders = row.count || 0;
-        completedQueries++;
-
-        if (completedQueries === 3) {
-          resolve(results);
-        }
-      });
-
-      // Total revenue query
-      db.getDb().get(totalRevenueQuery, (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        results.totalRevenue = parseFloat(row.revenue || 0).toFixed(2);
-        completedQueries++;
-
-        if (completedQueries === 3) {
-          resolve(results);
-        }
-      });
-    });
+    } catch (error) {
+      console.error('Error getting dashboard stats:', error);
+      throw error;
+    }
   }
 
   // Get recent activity for the dashboard
   static async getRecentActivity(userId, limit = 10) {
-    return new Promise((resolve, reject) => {
-      const query = `
-        SELECT
+    try {
+      // Get recent transactions
+      const { data: transactionActivity, error: transactionError } = await db.getDb()
+        .from('transactions')
+        .select(`
           'order' as type,
           'New order placed' as description,
-          t.created_at as timestamp
-        FROM transactions t
-        JOIN products p ON t.product_id = p.id
-        WHERE t.status = 'completed'
+          created_at as timestamp
+        `)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(Math.floor(limit / 2)); // Limit to half to make room for product updates
 
-        UNION ALL
+      if (transactionError) {
+        console.error('Error getting transaction activity:', transactionError);
+        throw transactionError;
+      }
 
-        SELECT
+      // Get recent product updates
+      const { data: productActivity, error: productError } = await db.getDb()
+        .from('products')
+        .select(`
           'product' as type,
-          'Product updated: ' || name as description,
+          CONCAT('Product updated: ', name) as description,
           updated_at as timestamp
-        FROM products
+        `)
+        .order('updated_at', { ascending: false })
+        .limit(Math.ceil(limit / 2));
 
-        ORDER BY timestamp DESC
-        LIMIT ?
-      `;
+      if (productError) {
+        console.error('Error getting product activity:', productError);
+        throw productError;
+      }
 
-      db.getDb().all(query, [limit], (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+      // Combine and sort activities by timestamp
+      const allActivities = [...transactionActivity, ...productActivity];
+      allActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      // Return the first 'limit' items
+      return allActivities.slice(0, limit);
+    } catch (error) {
+      console.error('Error getting recent activity:', error);
+      throw error;
+    }
   }
 }
 

@@ -165,7 +165,7 @@ router.post('/products', bypassAuth, async (req, res) => {
       name,
       description: description || '',
       price: parseFloat(price),
-      currency: currency || 'USD',
+      currency: currency || 'USDC',
       stock_quantity: parseInt(stock_quantity),
       category_id: category_id || null,
       image_url: image_url || ''

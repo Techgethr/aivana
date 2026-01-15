@@ -1,53 +1,74 @@
-const db = require('../database/db');
+const db = require('../utils/init-db');
 
 class UserModel {
   static async create(userData) {
-    return new Promise((resolve, reject) => {
-      const { username, email, password_hash } = userData;
-      const stmt = db.getDb().prepare(
-        'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)'
-      );
-      stmt.run([username, email, password_hash], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ id: this.lastID, ...userData });
-        }
-      });
-      stmt.finalize();
-    });
-  }
+    const { data, error } = await db.getDb()
+      .from('users')
+      .insert([userData])
+      .select()
+      .single();
 
-  static async findByEmail(email) {
-    return new Promise((resolve, reject) => {
-      db.getDb().get(
-        'SELECT * FROM users WHERE email = ?',
-        [email],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        }
-      );
-    });
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findById(id) {
-    return new Promise((resolve, reject) => {
-      db.getDb().get(
-        'SELECT * FROM users WHERE id = ?',
-        [id],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
+
+  static async findByEmail(email) {
+    const { data, error } = await db.getDb()
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
+
+  static async update(id, updateData) {
+    const { data, error } = await db.getDb()
+      .from('users')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
+
+  static async delete(id) {
+    const { data, error } = await db.getDb()
+      .from('users')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return !!data;
   }
 }
 

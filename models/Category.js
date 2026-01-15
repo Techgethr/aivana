@@ -2,122 +2,85 @@ const db = require('../utils/init-db');
 
 class CategoryModel {
   static async create(categoryData) {
-    return new Promise((resolve, reject) => {
-      const { name, description } = categoryData;
-      const stmt = db.getDb().prepare(
-        `INSERT INTO categories
-         (name, description)
-         VALUES (?, ?)`
-      );
-      stmt.run([name, description], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ id: this.lastID, ...categoryData });
-        }
-      });
-      stmt.finalize();
-    });
+    const { data, error } = await db.getDb()
+      .from('categories')
+      .insert([categoryData])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findAll() {
-    return new Promise((resolve, reject) => {
-      db.getDb().all(
-        'SELECT * FROM categories ORDER BY name ASC',
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('categories')
+      .select('*');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findById(id) {
-    return new Promise((resolve, reject) => {
-      db.getDb().get(
-        'SELECT * FROM categories WHERE id = ?',
-        [id],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('categories')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findByName(name) {
-    return new Promise((resolve, reject) => {
-      db.getDb().get(
-        'SELECT * FROM categories WHERE name = ?',
-        [name],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('categories')
+      .select('*')
+      .ilike('name', name)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async update(id, updateData) {
-    return new Promise((resolve, reject) => {
-      const fields = Object.keys(updateData);
-      const values = Object.values(updateData);
-      const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const { data, error } = await db.getDb()
+      .from('categories')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-      const stmt = db.getDb().prepare(
-        `UPDATE categories SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-      );
+    if (error) {
+      throw new Error(error.message);
+    }
 
-      stmt.run([...values, id], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(this.changes > 0);
-        }
-      });
-      stmt.finalize();
-    });
+    return !!data;
   }
 
   static async delete(id) {
-    return new Promise((resolve, reject) => {
-      // Instead of deleting, we'll archive the category by checking for associated products
-      // Check if any products are associated with this category
-      db.getDb().get(
-        'SELECT COUNT(*) as count FROM products WHERE category_id = ? AND status != ?',
-        [id, 'archived'],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else if (row.count > 0) {
-            // Don't allow deletion if active products are associated with this category
-            reject(new Error('Cannot delete category with associated active products'));
-          } else {
-            // If no products are associated, we can remove it
-            const stmt = db.getDb().prepare(
-              'DELETE FROM categories WHERE id = ?'
-            );
-            stmt.run([id], function(err) {
-              if (err) {
-                reject(err);
-              } else {
-                resolve(this.changes > 0);
-              }
-            });
-            stmt.finalize();
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return !!data;
   }
 }
 

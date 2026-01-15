@@ -2,116 +2,99 @@ const db = require('../utils/init-db');
 
 class ProductModel {
   static async create(productData) {
-    return new Promise((resolve, reject) => {
-      const { name, description, price, currency, stock_quantity, category_id, image_url } = productData;
-      const stmt = db.getDb().prepare(
-        `INSERT INTO products
-         (name, description, price, currency, stock_quantity, category_id, image_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      );
-      stmt.run([name, description, price, currency, stock_quantity, category_id, image_url], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ id: this.lastID, ...productData });
-        }
-      });
-      stmt.finalize();
-    });
+    const { data, error } = await db.getDb()
+      .from('products')
+      .insert([productData])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findAll() {
-    return new Promise((resolve, reject) => {
-      db.getDb().all(
-        `SELECT p.*, c.name as category_name
-         FROM products p
-         LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.status != 'archived'`,
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        }
-      );
-    });
+    let query = db.getDb()
+      .from('products')
+      .select(`
+        *,
+        categories(name) as category_name
+      `)
+      .neq('status', 'archived');
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findById(id) {
-    return new Promise((resolve, reject) => {
-      db.getDb().get(
-        `SELECT p.*, c.name as category_name
-         FROM products p
-         LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.id = ? AND p.status != 'archived'`,
-        [id],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row);
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('products')
+      .select(`
+        *,
+        categories(name) as category_name
+      `)
+      .eq('id', id)
+      .neq('status', 'archived')
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async findBySeller(sellerId) {
     // Since there's only one seller now, return all active products
-    return new Promise((resolve, reject) => {
-      db.getDb().all(
-        `SELECT p.*, c.name as category_name
-         FROM products p
-         LEFT JOIN categories c ON p.category_id = c.id
-         WHERE p.status != 'archived'`,
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        }
-      );
-    });
+    const { data, error } = await db.getDb()
+      .from('products')
+      .select(`
+        *,
+        categories(name) as category_name
+      `)
+      .neq('status', 'archived');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   static async update(id, updateData) {
-    return new Promise((resolve, reject) => {
-      const fields = Object.keys(updateData);
-      const values = Object.values(updateData);
-      const setClause = fields.map(field => `${field} = ?`).join(', ');
-      
-      const stmt = db.getDb().prepare(
-        `UPDATE products SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-      );
-      
-      stmt.run([...values, id], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(this.changes > 0);
-        }
-      });
-      stmt.finalize();
-    });
+    const { data, error } = await db.getDb()
+      .from('products')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return !!data;
   }
 
   static async delete(id) {
     // Instead of deleting, archive the product by changing its status
-    return new Promise((resolve, reject) => {
-      const stmt = db.getDb().prepare(
-        'UPDATE products SET status = ? WHERE id = ?'
-      );
-      stmt.run(['archived', id], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(this.changes > 0);
-        }
-      });
-      stmt.finalize();
-    });
+    const { data, error } = await db.getDb()
+      .from('products')
+      .update({ status: 'archived' })
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return !!data;
   }
 }
 
