@@ -31,11 +31,11 @@
       <div class="product-info-detail">
         <h1><%= product.name %></h1>
         
-        <div class="product-price-large">$<%= parseFloat(product.price).toFixed(2) %></div>
+        <div class="product-price-large">$<%= parseFloat(product.price).toFixed(2) %> <%= product.currency %></div>
         
         <div class="product-meta">
           <div class="product-category">
-            <strong>Category:</strong> <%= product.category_name || 'Uncategorized' %>
+            <strong>Category:</strong> <%= product.category.name || 'Uncategorized' %>
           </div>
           <div class="product-stock">
             <strong>Availability:</strong> 
@@ -44,9 +44,6 @@
             <% } else { %>
               Out of Stock
             <% } %>
-          </div>
-          <div class="product-currency">
-            <strong>Currency:</strong> <%= product.currency %>
           </div>
         </div>
         

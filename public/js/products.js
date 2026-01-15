@@ -120,7 +120,7 @@ async function loadProducts() {
         <td>${product.name}</td>
         <td>$${parseFloat(product.price).toFixed(2)}</td>
         <td>${product.stock_quantity}</td>
-        <td>${product.category_name || '-'}</td>
+        <td>${product.category.name || '-'}</td>
         <td><span class="status-badge ${product.status}">${product.status}</span></td>
         <td class="actions-cell">
           <button class="btn-primary edit-product-btn" data-product-id="${product.id}">Edit</button>

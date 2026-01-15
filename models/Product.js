@@ -33,7 +33,7 @@ class ProductModel {
       .from('products')
       .select(`
         *,
-        categories(name) as category_name
+        category:category_id(name)
       `)
       .neq('status', 'archived');
 
@@ -51,7 +51,7 @@ class ProductModel {
       .from('products')
       .select(`
         *,
-        categories(name) as category_name
+        category:category_id(name)
       `)
       .eq('id', id)
       .neq('status', 'archived')
@@ -70,7 +70,7 @@ class ProductModel {
       .from('products')
       .select(`
         *,
-        categories(name) as category_name
+        category:category_id(name)
       `)
       .neq('status', 'archived');
 

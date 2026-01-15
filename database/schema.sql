@@ -32,7 +32,7 @@ create table if not exists products (
   name text not null,
   description text,
   price numeric not null,
-  currency text default 'USD',
+  currency text default 'USDC',
   stock_quantity integer default 0,
   category_id bigint references categories(id),
   image_url text,
@@ -49,7 +49,7 @@ create table if not exists transactions (
   product_id bigint not null references products(id),
   quantity integer not null,
   total_price numeric not null,
-  currency text default 'USD',
+  currency text default 'USDC',
   eth_transaction_hash text,
   status text default 'pending',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null

@@ -115,7 +115,7 @@ router.get('/products', async (req, res) => {
     }
     
     if (category) {
-      products = products.filter(p => p.category && p.category.toLowerCase() === category.toLowerCase());
+      products = products.filter(p => p.category_id == category);
     }
     
     res.json(products);
