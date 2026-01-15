@@ -1,7 +1,7 @@
 const OpenAI = require('openai');
-const ProductModel = require('../models/Product');
 const { registerAllTools } = require('./toolRegistry');
 require('dotenv').config();
+const db = require('../utils/init-db');
 
 class AIAgent {
   constructor() {
@@ -60,16 +60,17 @@ Guidelines:
 5. Keep conversations focused on products and sales
 6. If asked about technical details of the platform, politely redirect to relevant help resources
 
-All the prices are in USDC.
+Show all the prices are in USDC.
+The Blockchain network used is Arc.
 
 Available functions: ${toolNames}. Use these functions when appropriate to assist users.
     `;
   }
 
-  async processMessage(userMessage, userId, sessionId) {
+  async processMessage(userMessage, userId) {
     try {
       // Save user message to conversation history
-      await this.saveConversation(userId, sessionId, userMessage, 'user');
+      await this.saveConversation(userId, userMessage, 'user');
 
       // Prepare context for AI
       let context = '';
@@ -136,7 +137,7 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
       }
 
       // Save AI response to conversation history
-      await this.saveConversation(userId, sessionId, aiResponse, 'ai');
+      await this.saveConversation(userId, aiResponse, 'ai');
 
       // Return response along with any tool results
       return {
@@ -153,14 +154,12 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
   }
 
 
-  async saveConversation(userId, sessionId, message, senderType) {
+  async saveConversation(userId, message, senderType) {
     try {
-      const db = require('../database/db');
       const { error } = await db.getDb()
         .from('conversations')
         .insert([{
           user_id: userId,
-          session_id: sessionId,
           message: message,
           sender_type: senderType
         }]);
@@ -173,13 +172,12 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
     }
   }
 
-  async getConversationHistory(sessionId) {
+  async getConversationHistory(userId) {
     try {
-      const db = require('../database/db');
       const { data, error } = await db.getDb()
         .from('conversations')
         .select('*')
-        .eq('session_id', sessionId)
+        .eq('user_id', userId)
         .order('timestamp', { ascending: true });
 
       if (error) {

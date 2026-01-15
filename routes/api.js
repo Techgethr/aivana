@@ -38,24 +38,15 @@ const bypassAuth = (req, res, next) => {
 // Endpoint for AI agent to process user queries
 router.post('/ai/chat', async (req, res) => {
   try {
-    const { message, userId, sessionId } = req.body;
+    const { message, userId } = req.body;
     
-    if (!message || !sessionId) {
-      return res.status(400).json({ error: 'Message and sessionId are required' });
+    if (!message || !userId) {
+      return res.status(400).json({ error: 'Message and userId are required' });
     }
     
-    // If userId is provided, validate it
-    let validatedUserId = null;
-    // if (userId) {
-    //   const user = await UserModel.findById(userId);
-    //   if (!user) {
-    //     return res.status(404).json({ error: 'User not found' });
-    //   }
-    //   validatedUserId = userId;
-    // }
     
     // Process the message with the AI agent
-    const result = await aiAgent.processMessage(message, validatedUserId, sessionId);
+    const result = await aiAgent.processMessage(message, userId);
     
     res.json(result);
   } catch (error) {
@@ -65,11 +56,11 @@ router.post('/ai/chat', async (req, res) => {
 });
 
 // Get conversation history
-router.get('/ai/conversation/:sessionId', bypassAuth, async (req, res) => {
+router.get('/ai/conversation/:userId', bypassAuth, async (req, res) => {
   try {
-    const { sessionId } = req.params;
+    const { userId } = req.params;
 
-    const history = await aiAgent.getConversationHistory(sessionId);
+    const history = await aiAgent.getConversationHistory(userId);
 
     res.json(history);
   } catch (error) {
