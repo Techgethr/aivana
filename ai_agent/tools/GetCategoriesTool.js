@@ -21,7 +21,6 @@ class GetCategoriesTool extends BaseTool {
       
       // Return just the names and basic info
       return categories.map(category => ({
-        id: category.id,
         name: category.name,
         description: category.description
       }));

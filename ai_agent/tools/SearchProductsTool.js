@@ -41,7 +41,7 @@ class SearchProductsTool extends BaseTool {
       const filteredProducts = allProducts.filter(product =>
         product.name.toLowerCase().includes(lowerQuery) ||
         (product.description && product.description.toLowerCase().includes(lowerQuery)) ||
-        (product.category_name && product.category_name.toLowerCase().includes(lowerQuery))
+        (product.category.name && product.category.name.toLowerCase().includes(lowerQuery))
       );
 
       // Return top 5 matching products

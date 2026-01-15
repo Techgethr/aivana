@@ -5,32 +5,33 @@ class GetProductDetailsTool extends BaseTool {
   constructor() {
     super(
       'get_product_details',
-      'Get detailed information about a specific product by its ID',
+      'Get detailed information about a product based on a description or query using semantic search',
       {
         type: 'object',
         properties: {
-          productId: {
-            type: 'integer',
-            description: 'The unique identifier of the product'
+          query: {
+            type: 'string',
+            description: 'Description or query to find the product (e.g., "wireless headphones with noise cancellation")'
           }
         },
-        required: ['productId']
+        required: ['query']
       }
     );
   }
 
   async execute(args) {
     try {
-      const { productId } = args;
-      
-      // Get product by ID
-      const product = await ProductModel.findById(productId);
-      
-      if (!product) {
-        return { error: 'Product not found' };
+      const { query } = args;
+
+      // Use semantic search to find the most relevant product
+      const products = await ProductModel.findBySemanticSimilarity(query, 1);
+
+      if (!products || products.length === 0) {
+        return { error: 'No product found matching your description' };
       }
-      
-      return product;
+
+      // Return the first (most relevant) product
+      return products[0];
     } catch (error) {
       console.error('Error in get_product_details tool:', error);
       return { error: 'Failed to get product details' };

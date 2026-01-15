@@ -60,6 +60,8 @@ Guidelines:
 5. Keep conversations focused on products and sales
 6. If asked about technical details of the platform, politely redirect to relevant help resources
 
+All the prices are in USDC.
+
 Available functions: ${toolNames}. Use these functions when appropriate to assist users.
     `;
   }
