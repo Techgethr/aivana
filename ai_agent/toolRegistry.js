@@ -3,12 +3,16 @@
  * @param {AIAgent} agent - The AI agent to register tools with
  */
 function registerAllTools(agent) {
-  const { SearchProductsTool, GetProductDetailsTool, GetCategoriesTool } = require('./tools');
+  const { SearchProductsTool, GetProductDetailsTool, GetCategoriesTool, AddToCartTool, RemoveFromCartTool, ViewCartTool, UpdateCartSessionTool } = require('./tools');
 
   // Register all known tools
   agent.registerTool(new SearchProductsTool());
   agent.registerTool(new GetProductDetailsTool());
   agent.registerTool(new GetCategoriesTool());
+  agent.registerTool(new AddToCartTool());
+  agent.registerTool(new RemoveFromCartTool());
+  agent.registerTool(new ViewCartTool());
+  agent.registerTool(new UpdateCartSessionTool());
 
   // Add more tools here as they are created
   // Example:

@@ -48,29 +48,32 @@ class AIAgent {
    */
   generateSystemPrompt() {
     const toolNames = Object.keys(this.tools).join(', ');
-    
+    const appHost = process.env.APP_HOST || 'http://localhost:3000';
+
     return `
-You are Aivana, an AI sales assistant for an e-commerce marketplace. Your role is to help customers find products, answer questions about items, and guide them through purchases. Be friendly, helpful, and professional.
+You are Aivana, an AI sales assistant for an e-commerce marketplace. Your role is to help customers find products, answer questions about items, manage their shopping cart, and guide them through purchases. Be friendly, helpful, and professional.
 
 Guidelines:
 1. Always be truthful about product availability and pricing
-2. If asked about specific products, use the available tools to search or get details
-3. Guide users toward making purchases when appropriate
-4. If a user wants to buy a product, collect necessary information and facilitate the purchase
-5. Keep conversations focused on products and sales
-6. If asked about technical details of the platform, politely redirect to relevant help resources
+2. If asked about a specific product, use the available tools to search or get details, and also show the product url, using this format: ${appHost}/product/<id_product>
+3. Help users manage their shopping cart by adding, removing, or viewing items in their cart
+4. Guide users toward making purchases when appropriate
+5. If a user wants to buy a product, collect necessary information and facilitate the purchase
+6. Keep conversations focused on products and sales
+7. If asked about technical details of the platform, politely redirect to relevant help resources
+8. If the buyer asks you to add a product to the cart, first run the function to search for the product, and if it exists, add it to the product with the conditions that the buyer tells you.
 
 Show all the prices are in USDC.
 The Blockchain network used is Arc.
 
-Available functions: ${toolNames}. Use these functions when appropriate to assist users.
+Available functions: ${toolNames}. Use these functions when appropriate to assist users with product discovery and cart management.
     `;
   }
 
-  async processMessage(userMessage, userId) {
+  async processMessage(userMessage, userId, sessionId) {
     try {
       // Save user message to conversation history
-      await this.saveConversation(userId, userMessage, 'user');
+      await this.saveConversation(userId, sessionId, userMessage, 'user');
 
       // Prepare context for AI
       let context = '';
@@ -97,12 +100,20 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
       if (response.tool_calls) {
         for (const toolCall of response.tool_calls) {
           const functionName = toolCall.function.name;
-          const functionArgs = JSON.parse(toolCall.function.arguments);
+          let functionArgs = JSON.parse(toolCall.function.arguments);
+
+          // Add sessionId to arguments if not present but required by cart tools
+          if ((functionName === 'add_to_cart' ||
+               functionName === 'remove_from_cart' ||
+               functionName === 'view_cart') &&
+              !functionArgs.sessionId) {
+            functionArgs.sessionId = sessionId;
+          }
 
           // Execute the tool
           if (this.tools[functionName]) {
             const result = await this.tools[functionName].execute(functionArgs);
-            
+
             // Format result for AI
             toolResults.push({
               tool_call_id: toolCall.id,
@@ -137,7 +148,7 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
       }
 
       // Save AI response to conversation history
-      await this.saveConversation(userId, aiResponse, 'ai');
+      await this.saveConversation(userId, sessionId, aiResponse, 'ai');
 
       // Return response along with any tool results
       return {
@@ -154,12 +165,14 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
   }
 
 
-  async saveConversation(userId, message, senderType) {
+  async saveConversation(userId, sessionId, message, senderType) {
     try {
+      const db = require('../database/db');
       const { error } = await db.getDb()
         .from('conversations')
         .insert([{
           user_id: userId,
+          session_id: sessionId,
           message: message,
           sender_type: senderType
         }]);
@@ -172,12 +185,13 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
     }
   }
 
-  async getConversationHistory(userId) {
+  async getConversationHistory(sessionId) {
     try {
+      const db = require('../database/db');
       const { data, error } = await db.getDb()
         .from('conversations')
         .select('*')
-        .eq('user_id', userId)
+        .eq('session_id', sessionId)
         .order('timestamp', { ascending: true });
 
       if (error) {

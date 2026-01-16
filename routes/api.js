@@ -38,16 +38,15 @@ const bypassAuth = (req, res, next) => {
 // Endpoint for AI agent to process user queries
 router.post('/ai/chat', async (req, res) => {
   try {
-    const { message, userId } = req.body;
-    
-    if (!message || !userId) {
-      return res.status(400).json({ error: 'Message and userId are required' });
+    const { message, userId, sessionId } = req.body;
+
+    if (!message || !sessionId) {
+      return res.status(400).json({ error: 'Message and sessionId are required' });
     }
-    
-    
+
     // Process the message with the AI agent
-    const result = await aiAgent.processMessage(message, userId);
-    
+    const result = await aiAgent.processMessage(message, userId, sessionId);
+
     res.json(result);
   } catch (error) {
     console.error('Error processing AI chat:', error);
@@ -56,11 +55,11 @@ router.post('/ai/chat', async (req, res) => {
 });
 
 // Get conversation history
-router.get('/ai/conversation/:userId', bypassAuth, async (req, res) => {
+router.get('/ai/conversation/:sessionId', bypassAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { sessionId } = req.params;
 
-    const history = await aiAgent.getConversationHistory(userId);
+    const history = await aiAgent.getConversationHistory(sessionId);
 
     res.json(history);
   } catch (error) {
