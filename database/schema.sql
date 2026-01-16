@@ -117,10 +117,10 @@ $$ language plpgsql;
 
 -- Function for semantic search using vector similarity
 create or replace function get_similar_products(query_embedding vector(1536), limit_count int default 5)
-returns setof products
+returns table (id bigint, name text, description text, price numeric, currency text, stock_quantity int, category_id bigint, image_url text, created_at timestamptz, updated_at timestamptz, status text )
 language sql
 as $$
-  select *
+  select id, name, description, price, currency, stock_quantity, category_id, image_url, created_at, updated_at, status
   from products
   where status != 'archived'
   order by description_embedding <=> query_embedding

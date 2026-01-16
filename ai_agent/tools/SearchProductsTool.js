@@ -25,7 +25,7 @@ class SearchProductsTool extends BaseTool {
 
       // Try semantic search first
       try {
-        const semanticResults = await ProductModel.findBySemanticSimilarity(query, 5);
+        const semanticResults = await ProductModel.findBySemanticSimilarity(query, 10);
         if (semanticResults && semanticResults.length > 0) {
           return semanticResults;
         }

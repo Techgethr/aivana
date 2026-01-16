@@ -38,14 +38,14 @@ const bypassAuth = (req, res, next) => {
 // Endpoint for AI agent to process user queries
 router.post('/ai/chat', async (req, res) => {
   try {
-    const { message, userId, sessionId } = req.body;
+    const { message, userId } = req.body;
 
-    if (!message || !sessionId) {
-      return res.status(400).json({ error: 'Message and sessionId are required' });
+    if (!message || !userId) {
+      return res.status(400).json({ error: 'Message and userId are required' });
     }
 
     // Process the message with the AI agent
-    const result = await aiAgent.processMessage(message, userId, sessionId);
+    const result = await aiAgent.processMessage(message, userId);
 
     res.json(result);
   } catch (error) {

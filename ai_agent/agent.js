@@ -53,38 +53,86 @@ class AIAgent {
     return `
 You are Aivana, an AI sales assistant for an e-commerce marketplace. Your role is to help customers find products, answer questions about items, manage their shopping cart, and guide them through purchases. Be friendly, helpful, and professional.
 
-Guidelines:
+CRITICAL GUIDELINES:
 1. Always be truthful about product availability and pricing
-2. If asked about a specific product, use the available tools to search or get details, and also show the product url, using this format: ${appHost}/product/<id_product>
-3. Help users manage their shopping cart by adding, removing, or viewing items in their cart
-4. Guide users toward making purchases when appropriate
-5. If a user wants to buy a product, collect necessary information and facilitate the purchase
-6. Keep conversations focused on products and sales
-7. If asked about technical details of the platform, politely redirect to relevant help resources
-8. If the buyer asks you to add a product to the cart, first run the function to search for the product, and if it exists, add it to the product with the conditions that the buyer tells you.
+2. When a user wants to add a product to cart, FIRST search for the product using search_products, THEN get its details using get_product_details, and FINALLY add it to cart using add_to_cart
+3. When a user wants to know about a product, use get_product_details to provide comprehensive information
+4. When a user wants to see their cart, use view_cart to show current items
+5. When a user wants to remove an item, use remove_from_cart
+6. If asked about a specific product, use the available tools to search or get details, and also show the product url, using this format: ${appHost}/product/<id_product>
+7. Help users manage their shopping cart by adding, removing, or viewing items in their cart
+8. Guide users toward making purchases when appropriate
+9. If a user wants to buy a product, collect necessary information and facilitate the purchase
+10. Keep conversations focused on products and sales
+11. If asked about technical details of the platform, politely redirect to relevant help resources
+12. When a user asks for multiple products, use search_products to find them
+13. When a user wants to update their cart information, use update_cart_session
+14. For complex requests, break them down into multiple steps using appropriate tools
+15. Always verify product existence and availability before suggesting purchases
+16. If a product is out of stock, inform the user and suggest alternatives if possible
+17. When a user wants to remove a product from the cart, first search for the product to get the product ID, and if it exists, remove it from the cart
 
-Show all the prices are in USDC.
+MULTI-STEP WORKFLOWS:
+- Adding to cart: search_products → get_product_details → add_to_cart
+- Product inquiry: search_products → get_product_details
+- Cart management: view_cart → [add_to_cart/remove_from_cart/update_cart_session]
+- Purchase preparation: view_cart → update_cart_session (if needed)
+- Removing from cart: search_products → remove_from_cart
+
+Show all prices are in USDC.
 The Blockchain network used is Arc.
 
-Available functions: ${toolNames}. Use these functions when appropriate to assist users with product discovery and cart management.
+Available functions: ${toolNames}. Use these functions when appropriate to assist users with product discovery and cart management. You can call multiple functions in sequence when needed to fulfill complex requests.
+
+SPECIFIC INSTRUCTIONS:
+- If asked about looking for products with a specific query, use the tool search_products to search for the product.
+- If asked about categories or type of products, use the tool get_categories to get the categories.
+- If asked about adding a product to the cart, follow this sequence:
+  1. First search for the product to get the product ID using the tool search_products
+  2. Then, if the product is found, get all the product details using the tool get_product_details
+  3. Finally, add it to the cart using the tool add_to_cart
+  4. If the product is not found, inform the user that the product was not found.
+- If asked about removing a product from the cart, use the tool remove_from_cart to remove the product from the cart.
+- If asked about viewing the cart, use the tool view_cart to view the cart.
+- If asked about updating cart session information, use the tool update_cart_session.
     `;
   }
 
-  async processMessage(userMessage, userId, sessionId) {
+  async processMessage(userMessage, userId) {
     try {
       // Save user message to conversation history
-      await this.saveConversation(userId, sessionId, userMessage, 'user');
+      await this.saveConversation(userId, userMessage, 'user');
 
-      // Prepare context for AI
-      let context = '';
+      // Get conversation history to provide context
+      const conversationHistory = await this.getConversationHistory(userId);
 
-      // Call OpenAI API with tools
+      // Prepare messages array with history
+      let messages = [
+        { role: "system", content: this.systemPrompt }
+      ];
+
+      // Add conversation history to messages (limit to last 10 exchanges to avoid token limits)
+      if (conversationHistory && conversationHistory.length > 0) {
+        // Sort by timestamp to ensure chronological order
+        const sortedHistory = conversationHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Add history messages (alternating user and AI messages)
+        for (const msg of sortedHistory) {
+          if (msg.sender_type === 'user') {
+            messages.push({ role: "user", content: msg.message });
+          } else if (msg.sender_type === 'ai') {
+            messages.push({ role: "assistant", content: msg.message });
+          }
+        }
+      }
+
+      // Add the current user message
+      messages.push({ role: "user", content: userMessage });
+
+      // Call OpenAI API with tools and conversation history
       const completion = await this.openai.chat.completions.create({
         model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-        messages: [
-          { role: "system", content: this.systemPrompt },
-          { role: "user", content: context + userMessage }
-        ],
+        messages: messages,
         tools: this.getToolDefinitions(),
         tool_choice: "auto", // Auto-select which tool to use
         temperature: 0.7,
@@ -107,7 +155,7 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
                functionName === 'remove_from_cart' ||
                functionName === 'view_cart') &&
               !functionArgs.sessionId) {
-            functionArgs.sessionId = sessionId;
+            functionArgs.sessionId = userId;
           }
 
           // Execute the tool
@@ -131,14 +179,31 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
 
         // If there were tool calls, get the final response from the AI
         if (toolResults.length > 0) {
+          // Add the tool results to the messages array
+          const toolResultMessages = [
+            { role: "system", content: this.systemPrompt }
+          ];
+
+          // Add conversation history again for context
+          if (conversationHistory && conversationHistory.length > 0) {
+            const sortedHistory = conversationHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            for (const msg of sortedHistory) {
+              if (msg.sender_type === 'user') {
+                toolResultMessages.push({ role: "user", content: msg.message });
+              } else if (msg.sender_type === 'ai') {
+                toolResultMessages.push({ role: "assistant", content: msg.message });
+              }
+            }
+          }
+
+          toolResultMessages.push({ role: "user", content: userMessage });
+          toolResultMessages.push({ role: "assistant", content: response.content, tool_calls: response.tool_calls });
+          toolResultMessages.push(...toolResults);
+
           const secondResponse = await this.openai.chat.completions.create({
             model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-            messages: [
-              { role: "system", content: this.systemPrompt },
-              { role: "user", content: userMessage },
-              { role: "assistant", content: response.content, tool_calls: response.tool_calls },
-              ...toolResults
-            ],
+            messages: toolResultMessages,
             temperature: 0.7,
             max_tokens: 500
           });
@@ -148,7 +213,7 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
       }
 
       // Save AI response to conversation history
-      await this.saveConversation(userId, sessionId, aiResponse, 'ai');
+      await this.saveConversation(userId, aiResponse, 'ai');
 
       // Return response along with any tool results
       return {
@@ -165,14 +230,13 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
   }
 
 
-  async saveConversation(userId, sessionId, message, senderType) {
+  async saveConversation(userId, message, senderType) {
     try {
-      const db = require('../database/db');
+      //const db = require('../database/db');
       const { error } = await db.getDb()
         .from('conversations')
         .insert([{
           user_id: userId,
-          session_id: sessionId,
           message: message,
           sender_type: senderType
         }]);
@@ -185,14 +249,15 @@ Available functions: ${toolNames}. Use these functions when appropriate to assis
     }
   }
 
-  async getConversationHistory(sessionId) {
+  async getConversationHistory(userId) {
     try {
-      const db = require('../database/db');
+      //const db = require('../database/db');
       const { data, error } = await db.getDb()
         .from('conversations')
         .select('*')
-        .eq('session_id', sessionId)
-        .order('timestamp', { ascending: true });
+        .eq('user_id', userId)
+        .order('timestamp', { ascending: true })
+        .limit(10);
 
       if (error) {
         console.error('Error getting conversation history:', error);
