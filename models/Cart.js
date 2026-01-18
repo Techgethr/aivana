@@ -125,7 +125,7 @@ class CartModel {
         .from('cart_items')
         .select(`
           *,
-          products (*, categories(name as category_name))
+          products (*, categories ( name ))
         `)
         .eq('cart_session_id', cartSession.id)
         .order('added_at', { ascending: false });
@@ -223,7 +223,7 @@ class CartModel {
       }
 
       const total = cartItems.reduce((sum, item) => {
-        const itemTotal = (item.product.price || 0) * item.quantity;
+        const itemTotal = (item.products.price || 0) * item.quantity;
         return sum + itemTotal;
       }, 0);
 

@@ -95,6 +95,10 @@ SPECIFIC INSTRUCTIONS:
 - If asked about removing a product from the cart, use the tool remove_from_cart to remove the product from the cart.
 - If asked about viewing the cart, use the tool view_cart to view the cart.
 - If asked about updating cart session information, use the tool update_cart_session.
+
+INSTRUCTIONS FOR PAYMENTS:
+- If asked about your wallet address, it is ${process.env.WALLET_ADDRESS}.
+- If asked about the details to make a payment, use the tool view_cart to get the cart details, and return the total and the wallet address to make the payment.
     `;
   }
 
@@ -218,13 +222,13 @@ SPECIFIC INSTRUCTIONS:
       // Return response along with any tool results
       return {
         response: aiResponse,
-        toolResults: toolResults
+        //toolResults: toolResults
       };
     } catch (error) {
       console.error('Error processing AI message:', error);
       return {
         response: "I'm sorry, I'm having trouble processing your request right now. Please try again later.",
-        toolResults: []
+        //toolResults: []
       };
     }
   }
