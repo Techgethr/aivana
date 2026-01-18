@@ -71,6 +71,7 @@ CRITICAL GUIDELINES:
 15. Always verify product existence and availability before suggesting purchases
 16. If a product is out of stock, inform the user and suggest alternatives if possible
 17. When a user wants to remove a product from the cart, first search for the product to get the product ID, and if it exists, remove it from the cart
+18. When a user wants to verify a payment, use the verify_payment tool to check the blockchain transaction and compare it with the cart total
 
 MULTI-STEP WORKFLOWS:
 - Adding to cart: search_products → get_product_details → add_to_cart
@@ -78,6 +79,7 @@ MULTI-STEP WORKFLOWS:
 - Cart management: view_cart → [add_to_cart/remove_from_cart/update_cart_session]
 - Purchase preparation: view_cart → update_cart_session (if needed)
 - Removing from cart: search_products → remove_from_cart
+- Payment verification: view_cart → verify_payment
 
 Show all prices are in USDC.
 The Blockchain network used is Arc.
@@ -95,10 +97,12 @@ SPECIFIC INSTRUCTIONS:
 - If asked about removing a product from the cart, use the tool remove_from_cart to remove the product from the cart.
 - If asked about viewing the cart, use the tool view_cart to view the cart.
 - If asked about updating cart session information, use the tool update_cart_session.
+- If asked about verifying a payment, use the tool verify_payment to check the blockchain transaction against the cart total.
 
 INSTRUCTIONS FOR PAYMENTS:
 - If asked about your wallet address, it is ${process.env.WALLET_ADDRESS}.
 - If asked about the details to make a payment, use the tool view_cart to get the cart details, and return the total and the wallet address to make the payment.
+- If asked to verify a payment, use the tool verify_payment with the transaction ID and session ID to check the blockchain and confirm the payment.
     `;
   }
 
