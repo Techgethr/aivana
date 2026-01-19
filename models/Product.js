@@ -122,6 +122,23 @@ class ProductModel {
     return !!data;
   }
 
+  static async findByCategory(categoryId) {
+    const { data, error } = await db.getDb()
+      .from('products')
+      .select(`
+        *,
+        category:category_id(name)
+      `)
+      .eq('category_id', categoryId)
+      .neq('status', 'archived');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
+
   /**
    * Find products by semantic similarity to a query
    * @param {string} query - The search query

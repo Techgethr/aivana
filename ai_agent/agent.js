@@ -72,6 +72,7 @@ CRITICAL GUIDELINES:
 16. If a product is out of stock, inform the user and suggest alternatives if possible
 17. When a user wants to remove a product from the cart, first search for the product to get the product ID, and if it exists, remove it from the cart
 18. When a user wants to verify a payment, use the verify_payment tool to check the blockchain transaction and compare it with the cart total
+19. When a user asks about types of products, use the get_products_by_category tool to first search for the category and then return the first 10 products in that category
 
 MULTI-STEP WORKFLOWS:
 - Adding to cart: search_products → get_product_details → add_to_cart
@@ -80,11 +81,12 @@ MULTI-STEP WORKFLOWS:
 - Purchase preparation: view_cart → update_cart_session (if needed)
 - Removing from cart: search_products → remove_from_cart
 - Payment verification: view_cart → verify_payment
+- Product types inquiry: get_categories → get_products_by_category
 
 Show all prices are in USDC.
 The Blockchain network used is Arc.
 
-Available functions: ${toolNames}. Use these functions when appropriate to assist users with product discovery and cart management. You can call multiple functions in sequence when needed to fulfill complex requests.
+Available functions: ${toolNames}. Use these functions when appropriate to assist users with product discovery and cart management. You can call multiple functions in sequence when needed to fulfill complex requests. When a user asks about product types, you MUST first check for categories using get_categories, then use get_products_by_category to retrieve products in that category. When a user wants to add a product to their cart, you MUST follow the complete sequence: search_products → get_product_details → add_to_cart.
 
 SPECIFIC INSTRUCTIONS:
 - If asked about looking for products with a specific query, use the tool search_products to search for the product.
@@ -97,7 +99,17 @@ SPECIFIC INSTRUCTIONS:
 - If asked about removing a product from the cart, use the tool remove_from_cart to remove the product from the cart.
 - If asked about viewing the cart, use the tool view_cart to view the cart.
 - If asked about updating cart session information, use the tool update_cart_session.
-- If asked about verifying a payment, use the tool verify_payment to check the blockchain transaction against the cart total.
+- If asked to verify a payment, use the tool verify_payment to check the blockchain transaction against the cart total.
+- If asked about types of products, follow this sequence:
+  1. First use get_categories to find relevant categories
+  2. Then use get_products_by_category to retrieve products in that category
+  3. This two-step process ensures accurate and relevant product recommendations
+- When a user wants to add a product to their cart, you MUST execute all three steps in sequence:
+  1. First use search_products to find the product
+  2. Then use get_product_details to get complete product information
+  3. Finally use add_to_cart to add the product to the user's cart
+  4. Do not skip any steps in this process, as each step is essential for successful cart addition.
+- CRITICAL DATA FLOW INFORMATION: When using search_products or get_product_details, the returned product object contains an 'id' field. You MUST use this 'id' field as the 'productId' parameter when calling add_to_cart. The product ID is essential for adding the correct item to the cart.
 
 INSTRUCTIONS FOR PAYMENTS:
 - If asked about your wallet address, it is ${process.env.WALLET_ADDRESS}.
@@ -154,6 +166,7 @@ INSTRUCTIONS FOR PAYMENTS:
       let toolResults = [];
 
       if (response.tool_calls) {
+        console.log('Tool calls found:', response.tool_calls);
         for (const toolCall of response.tool_calls) {
           const functionName = toolCall.function.name;
           let functionArgs = JSON.parse(toolCall.function.arguments);

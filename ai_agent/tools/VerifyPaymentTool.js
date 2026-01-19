@@ -1,5 +1,5 @@
 const BaseTool = require('./BaseTool');
-const EthereumService = require('../../blockchain/ethereum');
+const EthereumService = require('../../blockchain/arc');
 const db = require('../../utils/init-db');
 
 class VerifyPaymentTool extends BaseTool {

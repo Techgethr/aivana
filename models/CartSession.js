@@ -71,6 +71,14 @@ class CartSessionModel {
    */
   static async updateSession(sessionId, updateData) {
     try {
+      // First check if the session exists
+      const existingSession = await this.getSession(sessionId);
+
+      if (!existingSession) {
+        // If session doesn't exist, create it with the update data
+        return await this.getOrCreateSession(sessionId, updateData);
+      }
+
       const { data, error } = await db.getDb()
         .from('cart_sessions')
         .update(updateData)
@@ -102,13 +110,22 @@ class CartSessionModel {
         .eq('session_id', sessionId)
         .single();
 
+      // If no session exists, return null instead of throwing an error
       if (error) {
+        // Check if the error is due to no rows being returned
+        if (error.code === 'PGRST116' || error.message.includes('No row was found')) {
+          return null;
+        }
         throw new Error(error.message);
       }
 
       return data;
     } catch (error) {
       console.error('Error getting cart session:', error);
+      // If it's a "no row found" error, return null
+      if (error.message.includes('No row was found') || error.message.includes('PGRST116')) {
+        return null;
+      }
       throw error;
     }
   }

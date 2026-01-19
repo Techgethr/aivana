@@ -7,6 +7,7 @@ const RemoveFromCartTool = require('./RemoveFromCartTool');
 const ViewCartTool = require('./ViewCartTool');
 const UpdateCartSessionTool = require('./UpdateCartSessionTool');
 const VerifyPaymentTool = require('./VerifyPaymentTool');
+const GetProductsByCategoryTool = require('./GetProductsByCategoryTool');
 
 // Add more tools as they are created
 
@@ -18,5 +19,6 @@ module.exports = {
   RemoveFromCartTool,
   ViewCartTool,
   UpdateCartSessionTool,
-  VerifyPaymentTool
+  VerifyPaymentTool,
+  GetProductsByCategoryTool
 };

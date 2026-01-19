@@ -1,30 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 
 // Import models
-const UserModel = require('../models/User');
 const ProductModel = require('../models/Product');
-const TransactionModel = require('../models/Transaction');
 const CategoryModel = require('../models/Category');
 
 // Import services
 const AIAgent = require('../ai_agent/agent');
-const EthereumService = require('../blockchain/ethereum');
 const StatsService = require('../services/stats');
 const aiAgent = new AIAgent();
-const ethereumService = new EthereumService();
 
 // Single seller ID for the platform
 const SINGLE_SELLER_ID = 1; // Using the ID of the first user in the DB
-
-// Mock middleware to bypass authentication during development
-const authenticateToken = (req, res, next) => {
-  // In development mode, we'll use the single seller ID
-  req.user = { id: SINGLE_SELLER_ID };
-  next();
-};
 
 // Alternative middleware that completely bypasses authentication
 const bypassAuth = (req, res, next) => {
@@ -68,24 +55,6 @@ router.get('/ai/conversation/:sessionId', bypassAuth, async (req, res) => {
   }
 });
 
-// Protected API routes (require authentication)
-
-// Get user profile
-router.get('/profile', bypassAuth, async (req, res) => {
-  try {
-    // Return a fixed seller profile since there's only one seller
-    const sellerProfile = {
-      id: req.user.id,
-      username: 'Main Seller',
-      email: 'seller@aivana.com',
-      role: 'seller'
-    };
-    res.json(sellerProfile);
-  } catch (error) {
-    console.error('Error getting profile:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // Get all products (public endpoint)
 router.get('/products', async (req, res) => {

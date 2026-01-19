@@ -88,7 +88,8 @@ class CartModel {
       // Get the cart session
       const cartSession = await CartSessionModel.getSession(sessionId);
       if (!cartSession) {
-        throw new Error('Cart session not found');
+        // If session doesn't exist, nothing to remove
+        return true;
       }
 
       const { data, error } = await db.getDb()
@@ -151,7 +152,8 @@ class CartModel {
       // Get the cart session
       const cartSession = await CartSessionModel.getSession(sessionId);
       if (!cartSession) {
-        throw new Error('Cart session not found');
+        // If session doesn't exist, nothing to clear
+        return true;
       }
 
       const { data, error } = await db.getDb()
@@ -182,7 +184,8 @@ class CartModel {
       // Get the cart session
       const cartSession = await CartSessionModel.getSession(sessionId);
       if (!cartSession) {
-        throw new Error('Cart session not found');
+        // If session doesn't exist, nothing to update
+        return null;
       }
 
       if (quantity <= 0) {

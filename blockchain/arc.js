@@ -2,9 +2,9 @@ const { createPublicClient, http, parseEther, getAddress } = require('viem');
 const { arcTestnet } = require('viem/chains');
 require('dotenv').config();
 
-class EthereumService {
+class ArcService {
   constructor() {
-    // Initialize viem client with Ethereum RPC URL
+    // Initialize viem client with Arc RPC URL
     this.client = createPublicClient({
       chain: arcTestnet,
       transport: http(process.env.ARC_RPC_URL)
@@ -156,4 +156,4 @@ class EthereumService {
   }
 }
 
-module.exports = EthereumService;
+module.exports = ArcService;
