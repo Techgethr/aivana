@@ -220,7 +220,7 @@ class CartModel {
   static async getCartTotal(sessionId) {
     try {
       const cartItems = await this.getCart(sessionId);
-      
+
       if (!cartItems || cartItems.length === 0) {
         return 0;
       }
@@ -233,6 +233,55 @@ class CartModel {
       return total;
     } catch (error) {
       console.error('Error calculating cart total:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process payment confirmation and reduce product stock
+   * @param {string} sessionId - The session identifier
+   * @returns {Promise<boolean>} - True if successful
+   */
+  static async processPaymentConfirmation(sessionId) {
+    try {
+      // Get all items in the cart
+      const cartItems = await this.getCart(sessionId);
+
+      if (!cartItems || cartItems.length === 0) {
+        throw new Error('Cart is empty');
+      }
+
+      // Process each item in the cart
+      for (const item of cartItems) {
+        const productId = item.product_id || item.products.id;
+        const quantity = item.quantity;
+
+        // Get the current product
+        const product = await ProductModel.findById(productId);
+        if (!product) {
+          throw new Error(`Product with ID ${productId} not found`);
+        }
+
+        // Check if there's enough stock
+        if (product.stock_quantity < quantity) {
+          throw new Error(`Not enough stock for product ${product.name}. Requested: ${quantity}, Available: ${product.stock_quantity}`);
+        }
+
+        // Reduce the stock
+        const newStock = product.stock_quantity - quantity;
+        const updateSuccess = await ProductModel.update(productId, { stock_quantity: newStock });
+
+        if (!updateSuccess) {
+          throw new Error(`Failed to update stock for product ${productId}`);
+        }
+      }
+
+      // Clear the cart after successful payment
+      await this.clearCart(sessionId);
+
+      return true;
+    } catch (error) {
+      console.error('Error processing payment confirmation:', error);
       throw error;
     }
   }

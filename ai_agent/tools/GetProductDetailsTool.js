@@ -5,7 +5,7 @@ class GetProductDetailsTool extends BaseTool {
   constructor() {
     super(
       'get_product_details',
-      'Get detailed information about a product based on a description or query using semantic search',
+      'Get detailed information about a product based on a description or query using semantic search. This is the second step in the sequence: search_products → get_product_details → add_to_cart. Use this after finding a product to get its details before adding to cart.',
       {
         type: 'object',
         properties: {

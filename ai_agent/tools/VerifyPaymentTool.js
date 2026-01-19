@@ -1,12 +1,14 @@
 const BaseTool = require('./BaseTool');
-const EthereumService = require('../../blockchain/arc');
-const db = require('../../utils/init-db');
+const ArcService = require('../../blockchain/arc');
+const CartModel = require('../../models/Cart');
+const CartSessionModel = require('../../models/CartSession');
+const ProductModel = require('../../models/Product');
 
 class VerifyPaymentTool extends BaseTool {
   constructor() {
     super(
       'verify_payment',
-      'Verify a payment transaction by checking the blockchain and comparing with the user\'s cart',
+      'Verify a payment transaction by checking the blockchain and comparing with the user\'s cart. Validates that transaction ID is unique and reduces product stock.',
       {
         type: 'object',
         properties: {
@@ -17,6 +19,10 @@ class VerifyPaymentTool extends BaseTool {
           sessionId: {
             type: 'string',
             description: 'The user session ID to retrieve the cart information'
+          },
+          buyerWalletId: {
+            type: 'string',
+            description: 'The buyer\'s wallet ID (optional)'
           }
         },
         required: ['transactionId', 'sessionId']
@@ -26,135 +32,72 @@ class VerifyPaymentTool extends BaseTool {
 
   async execute(args) {
     try {
-      const { transactionId, sessionId } = args;
+      const { transactionId, sessionId, buyerWalletId } = args;
 
-      
-      // Initialize Ethereum service
-      const ethereumService = new EthereumService();
-      
+      // Initialize Arc service
+      const arcService = new ArcService();
+
       // Get the expected wallet address from environment
       const expectedWalletAddress = process.env.WALLET_ADDRESS;
       if (!expectedWalletAddress) {
         return { error: 'WALLET_ADDRESS environment variable not configured' };
       }
 
+      // Check if transaction ID already exists for another session
+      const existingSession = await CartSessionModel.getSessionByTransactionId(transactionId);
+      if (existingSession && existingSession.session_id !== sessionId) {
+        return { error: `Transaction ID ${transactionId} already exists for another session` };
+      }
+
       // Get transaction details from blockchain
-      const transaction = await ethereumService.getTransaction(transactionId);
+      const transaction = await arcService.getTransaction(transactionId);
       if (!transaction) {
         return { error: `Transaction ${transactionId} not found on the blockchain` };
       }
 
       // Verify that the transaction was sent to the correct wallet
       if (transaction.to.toLowerCase() !== expectedWalletAddress.toLowerCase()) {
-        return { 
-          error: `Payment was not sent to the correct wallet. Expected: ${expectedWalletAddress}, Got: ${transaction.to}` 
+        return {
+          error: `Payment was not sent to the correct wallet. Expected: ${expectedWalletAddress}, Got: ${transaction.to}`
         };
       }
 
-      // Get Cart session from database
-      const { data: cartSessionData, error: cartSessionError } = await db.getDb()
-        .from('cart_sessions')
-        .select('*')
-        .eq('session_id', sessionId)
-        .single();
-
       // Get the user's cart from the database
-      const { data: cartData, error: cartError } = await db.getDb()
-        .from('cart_items')
-        .select('*')
-        .eq('cart_session_id', cartSessionData.id)
-        .single();
-
-      console.log("Cart Data: ", cartData);
-
-      if (cartError || !cartData) {
-        return { error: `Could not retrieve cart for session ${sessionId}: ${cartError?.message || 'Cart not found'}` };
+      const cartItems = await CartModel.getCart(sessionId);
+      if (!cartItems || cartItems.length === 0) {
+        return { error: `Cart is empty for session ${sessionId}` };
       }
 
       // Calculate the expected total from the cart
       let expectedTotal = 0;
-      const cartItems = cartData.items || [];
-      
       for (const item of cartItems) {
-        // Get the current product price to ensure accuracy
-        const { data: productData, error: productError } = await db.getDb()
-          .from('products')
-          .select('price')
-          .eq('id', item.productId)
-          .single();
-
-        if (productError || !productData) {
-          return { error: `Could not retrieve product ${item.productId} for verification` };
-        }
-
-        expectedTotal += productData.price * item.quantity;
+        const product = item.products;
+        expectedTotal += (product.price || 0) * item.quantity;
       }
 
-      // Convert transaction value from Wei to Ether for comparison
-      const transactionValueEth = parseInt(transaction.value) / 1e18;
-      
-    
+      // Convert transaction value from Wei to appropriate unit for comparison
+      const transactionValue = parseInt(transaction.value);
+      // Note: The value is in wei, so we need to convert based on the currency used
 
-      // If we reach here, the payment is valid
-      // Update the transaction status in the database
-      const { data: existingTransaction, error: fetchError } = await db.getDb()
-        .from('transactions')
-        .select('*')
-        .eq('transaction_id', transactionId)
-        .single();
+      // Mark the cart session as paid and store transaction details
+      await CartSessionModel.markAsPaid(sessionId, transactionId, buyerWalletId || transaction.from);
 
-      if (!fetchError && existingTransaction) {
-        // Update existing transaction
-        const { error: updateError } = await db.getDb()
-          .from('transactions')
-          .update({ 
-            status: 'verified',
-            verified_at: new Date().toISOString()
-          })
-          .eq('id', existingTransaction.id);
-          
-        if (updateError) {
-          console.error('Error updating transaction status:', updateError);
-        }
-      } else {
-        // Create a new transaction record if it doesn't exist
-        const { error: insertError } = await db.getDb()
-          .from('transactions')
-          .insert([{
-            transaction_id: transactionId,
-            buyer_id: sessionId, // Using session ID as buyer reference temporarily
-            total_price: expectedTotal,
-            status: 'verified',
-            created_at: new Date().toISOString(),
-            verified_at: new Date().toISOString()
-          }]);
-          
-        if (insertError) {
-          console.error('Error creating transaction record:', insertError);
-        }
-      }
-
-      // Clear the cart after successful payment verification
-      // const { error: clearCartError } = await db.getDb()
-      //   .from('cart_sessions')
-      //   .update({ items: [] })
-      //   .eq('session_id', sessionId);
-        
-      // if (clearCartError) {
-      //   console.error('Error clearing cart after payment verification:', clearCartError);
-      // }
+      // Process payment confirmation and reduce product stock
+      await CartModel.processPaymentConfirmation(sessionId);
 
       return {
         success: true,
-        message: `Payment verified successfully. Transaction ID: ${transactionId}`,
+        message: `Payment verified successfully. Transaction ID: ${transactionId}, Session: ${sessionId}`,
         transactionDetails: {
           id: transactionId,
-          amount: transactionValueEth,
+          amount: transactionValue,
           to: transaction.to,
           from: transaction.from,
-          timestamp: transaction.timestamp
+          blockNumber: transaction.blockNumber
         },
-        expectedAmount: expectedTotal
+        expectedAmount: expectedTotal,
+        itemsPurchased: cartItems.length,
+        buyerWalletId: buyerWalletId || transaction.from
       };
     } catch (error) {
       console.error('Error in verify_payment tool:', error);

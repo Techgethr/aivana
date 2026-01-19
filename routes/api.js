@@ -316,27 +316,48 @@ router.delete('/categories/:id', bypassAuth, async (req, res) => {
   }
 });
 
-// Get user's transactions
+// Get user's transactions (now from cart_sessions)
 router.get('/transactions', bypassAuth, async (req, res) => {
   try {
-    // Get all transactions (since there's only one seller, we might want to show all transactions)
+    // Get all paid cart sessions (transactions)
     const db = require('../utils/init-db');
-    const transactions = await new Promise((resolve, reject) => {
-      db.getDb().all(
-        `SELECT t.*, u.username as buyer_name, p.name as product_name
-         FROM transactions t
-         JOIN users u ON t.buyer_id = u.id
-         JOIN products p ON t.product_id = p.id`,
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        }
-      );
+    const { data: cartSessions, error } = await db.getDb()
+      .from('cart_sessions')
+      .select(`
+        *,
+        cart_items (*, products (*))
+      `)
+      .eq('status', 'paid')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // Format the response to match the expected transaction format
+    const formattedTransactions = cartSessions.map(session => {
+      // Calculate total amount from cart items
+      let totalAmount = 0;
+      const cartItems = session.cart_items || [];
+      for (const item of cartItems) {
+        const product = item.products;
+        totalAmount += (product.price || 0) * item.quantity;
+      }
+
+      return {
+        id: session.id,
+        session_id: session.session_id,
+        buyer_name: session.buyer_name || 'Anonymous',
+        buyer_wallet_id: session.buyer_wallet_id,
+        transaction_id: session.transaction_id,
+        status: session.status,
+        total_amount: totalAmount,
+        created_at: session.created_at,
+        items: cartItems
+      };
     });
-    res.json(transactions);
+
+    res.json(formattedTransactions);
   } catch (error) {
     console.error('Error getting transactions:', error);
     res.status(500).json({ error: 'Internal server error' });

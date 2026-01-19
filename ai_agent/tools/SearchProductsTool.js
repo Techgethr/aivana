@@ -5,7 +5,7 @@ class SearchProductsTool extends BaseTool {
   constructor() {
     super(
       'search_products',
-      'Search for products based on a query string',
+      'Search for products based on a query string. This is the first step in the sequence: search_products → get_product_details → add_to_cart. Use this when a user wants to find a product to add to their cart.',
       {
         type: 'object',
         properties: {

@@ -46,7 +46,8 @@ class CartSessionModel {
             session_id: sessionId,
             buyer_name: buyerInfo.buyer_name || null,
             shipping_address: buyerInfo.shipping_address || null,
-            notes: buyerInfo.notes || null
+            notes: buyerInfo.notes || null,
+            status: 'pending' // Default status
           }])
           .select()
           .single();
@@ -122,6 +123,80 @@ class CartSessionModel {
       return data;
     } catch (error) {
       console.error('Error getting cart session:', error);
+      // If it's a "no row found" error, return null
+      if (error.message.includes('No row was found') || error.message.includes('PGRST116')) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Update the status of a cart session to paid with transaction details
+   * @param {string} sessionId - The session identifier
+   * @param {string} transactionId - The blockchain transaction ID
+   * @param {string} buyerWalletId - The buyer's wallet ID
+   * @returns {Promise<Object>} - Updated cart session
+   */
+  static async markAsPaid(sessionId, transactionId, buyerWalletId) {
+    try {
+      // First check if a session with this transaction ID already exists
+      const existingSessionWithTx = await db.getDb()
+        .from('cart_sessions')
+        .select('*')
+        .eq('transaction_id', transactionId)
+        .single();
+
+      if (existingSessionWithTx.data && existingSessionWithTx.data.session_id !== sessionId) {
+        throw new Error('Transaction ID already exists for another session');
+      }
+
+      const { data, error } = await db.getDb()
+        .from('cart_sessions')
+        .update({
+          status: 'paid',
+          transaction_id: transactionId,
+          buyer_wallet_id: buyerWalletId
+        })
+        .eq('session_id', sessionId)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error marking cart session as paid:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cart session by transaction ID
+   * @param {string} transactionId - The blockchain transaction ID
+   * @returns {Promise<Object>} - Cart session information
+   */
+  static async getSessionByTransactionId(transactionId) {
+    try {
+      const { data, error } = await db.getDb()
+        .from('cart_sessions')
+        .select('*')
+        .eq('transaction_id', transactionId)
+        .single();
+
+      if (error) {
+        // Check if the error is due to no rows being returned
+        if (error.code === 'PGRST116' || error.message.includes('No row was found')) {
+          return null;
+        }
+        throw new Error(error.message);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error getting cart session by transaction ID:', error);
       // If it's a "no row found" error, return null
       if (error.message.includes('No row was found') || error.message.includes('PGRST116')) {
         return null;

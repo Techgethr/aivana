@@ -5,7 +5,7 @@ class AddToCartTool extends BaseTool {
   constructor() {
     super(
       'add_to_cart',
-      'Add a product to the shopping cart for the current session',
+      'Add a product to the shopping cart for the current session. This is the final step in the sequence: search_products → get_product_details → add_to_cart. Use this after finding the product and getting its details.',
       {
         type: 'object',
         properties: {

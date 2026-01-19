@@ -6,7 +6,7 @@ class GetProductsByCategoryTool extends BaseTool {
   constructor() {
     super();
     this.name = 'get_products_by_category';
-    this.description = 'Get products by category when user asks about product types. First searches for the category and then returns the first 10 products in that category.';
+    this.description = 'Get products by category when user asks about product types. First searches for the category and then returns the first 10 products in that category. Use this when a user asks about types of products, followed by get_product_details and add_to_cart if they want to add items to their cart.';
     this.parameters = {
       type: 'object',
       properties: {
